@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.08";
-# $Revision: 1.93 $$Date: 1996/06/27 00:16:20 $$RCSfile: Msql.pm,v $
+$VERSION = "1.09";
+# $Revision: 1.94 $$Date: 1996/07/02 08:25:52 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -19,14 +19,21 @@ require Exporter;
         REAL_TYPE
 );
 @EXPORT_OK = qw(
+	IDX_TYPE
         chartype
         inttype
         realtype
+	idxtype
 );
 
-sub chartype { constant("chartype", 0) }
-sub inttype  { constant("inttype", 0) }
-sub realtype { constant("realtype", 0) }
+sub CHAR_TYPE { constant("CHAR_TYPE", 0) }
+    *chartype = \&CHAR_TYPE;
+sub INT_TYPE  { constant("INT_TYPE", 0) }
+    *inttype  = \&INT_TYPE;
+sub REAL_TYPE { constant("REAL_TYPE", 0) }
+    *realtype = \&REAL_TYPE;
+sub IDX_TYPE  { constant("IDX_TYPE", 0) }
+    *idxtype  = \&IDX_TYPE;
 sub host     { return shift->{'HOST'} }
 sub sock     { return shift->{'SOCK'} }
 sub database { return shift->{'DATABASE'} }
@@ -161,7 +168,7 @@ close the connection, choose to do one of the following:
 
 =back
 
-=head1 Metadata
+=head2 Metadata
 
 Now lets reconsider the above methods with regard to metadata.
 
@@ -198,8 +205,8 @@ $sth knows about all metadata that are provided by the API:
   @arr  = $sth->table;       the names of the tables of each column
   @arr  = $sth->name;        the names of the columns
   @arr  = $sth->type;        the type of each column, defined in msql.h
-	                     and accessible via &Msql::chartype,
-	                     &Msql::inttype, &Msql::realtype,
+	                     and accessible via Msql::CHAR_TYPE,
+	                     &Msql::INT_TYPE, &Msql::REAL_TYPE,
   @arr  = $sth->isnotnull;   array of boolean
   @arr  = $sth->isprikey;    array of boolean
   @arr  = $sth->length;      array of the length of each field in bytes
@@ -216,6 +223,42 @@ which is equivalent to
     @all_column_names = $sth->name;
     $name_of_third_column = $all_column_names[2];
 
+=head2 @EXPORT
+
+For historical reasons the constants CHAR_TYPE, INT_TYPE, and
+REAL_TYPE are in @EXPORT instead of @EXPORT_OK. This means, that you
+always have them imported into your namespace. I consider it a bug,
+but not such a serious one, that I intend to break old programs by
+moving them into EXPORT_OK.
+
+=head2 Connecting to a different port
+
+The mSQL API allows you to interface to a different port than the
+default that is compiled into your copy. To use this feature you have
+to set the environment variable MSQL_TCP_PORT. You can do so at any
+time in your program with the command
+
+    $ENV{'MSQL_TCP_PORT'} = 4333;
+
+Any subsequent connect() will establish a connection to the specified
+port.
+
+=head2 Version information
+
+The version of MsqlPerl is always stored in $Msql::VERSION as it is
+perl standard. The mSQL API implements methods to access some internal
+configuration parameters: gethostinfo, getserverinfo, and
+getprotoinfo.  All three are available via a database handle, but are
+not associated with the database handle. All three return global
+variables that reflect the B<last> connect() command within the
+current program.
+
+=head2 Administration
+
+shutdown, creatdb, dropdb, reloadacls are all accessible via a
+database handle and implement the corresponding methods to what
+msqladmin does.
+
 =head2 The C<-w> switch
 
 With Msql the C<-w> switch is your friend! If you call your perl
@@ -231,7 +274,7 @@ If you want to use the C<-w> switch but do not want to see the error
 messages from the msql daemon, you can set the variable $Msql::QUIET
 to some true value, and they will be suppressed.
 
-=head1 StudlyCaps
+=head2 StudlyCaps
 
 Real Perl Programmers (C) usually don't like to type I<ListTables> but
 prefer I<list_tables> or I<listtables>. The mSQL API uses StudlyCaps

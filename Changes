@@ -1,3 +1,29 @@
+July 1, 1996
+   pmsql: hostname were truncated at the first dot mostly.
+
+   pmsql: completion for drop table statement issued unnecessary
+   warning.
+
+   Msql.xs eliminated warning from the cc compiler on solaris 5
+
+   Documented how to connect to a different than the default port in
+   the manpage.
+
+   Added gethostinfo, getserverinfo, and getprotoinfo as methods on
+   the database handle.
+
+   Added the admin API calls shutdown, creatdb, dropdb, reloadacls.
+
+   Internally all constants are implemented in the standard uppercase
+   subroutines way again. Lowercase is supported but not
+   recommended. It was not a good idea to allow lowercase for caonstants
+   too. It helps nobody and confuses others. But it's no big deal.
+   In the name of efficiency, write CHAR_TYPE, INT_TYPE, etc. again!
+
+   Prepared a few things for msql 2.0, but don't support it yet,
+   because it is broken on my development platform. The tests though,
+   they should perform work for msql 2.0.
+
 June 7, 1996
    Improved pmsql's as_string method and documented it. Control
    characters and backslashes are escaped now.

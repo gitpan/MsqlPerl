@@ -1,10 +1,15 @@
 /* -*-C-*- */
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 
 
 #include "msql.h"
+
+#ifndef IS_PRI_KEY
+#define IS_PRI_KEY(a) IS_UNIQUE(a)
+#endif
 
 typedef int SysRet;
 typedef m_result *Msql__Result;
@@ -38,9 +43,11 @@ typedef HV *Msql;
 #define ERRMSG				\
     sv = perl_get_sv(name,TRUE);	\
     sv_setpv(sv,msqlErrMsg);		\
-    if (dowarn && ! SvTRUE(perl_get_sv("Msql::QUIET",TRUE)))				\
-      warn("MSQL's message: %s", msqlErrMsg);	\
-    XSRETURN_UNDEF;
+    if (dowarn && ! SvTRUE(perl_get_sv("Msql::QUIET",TRUE))){ \
+      warn("MSQL's message: %s", msqlErrMsg); \
+    }					\
+    XST_mUNDEF(0);			\
+    XSRETURN(1);
 
 
 #define readSOCKET				\
@@ -98,16 +105,28 @@ int arg;
 {
     errno = 0;
     switch (*name) {
-    case 'c':
-	if (strEQ(name, "chartype"))
+    case 'C':
+	if (strEQ(name, "CHAR_TYPE"))
 #ifdef CHAR_TYPE
 	    return CHAR_TYPE;
 #else
 	    goto not_there;
 #endif
 	break;
-    case 'i':
-	if (strEQ(name, "inttype"))
+    case 'I':
+	if (strEQ(name, "IDENT_TYPE"))
+#ifdef IDENT_TYPE
+	    return IDENT_TYPE;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "IDX_TYPE"))
+#ifdef IDX_TYPE
+	    return IDX_TYPE;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "INT_TYPE"))
 #ifdef INT_TYPE
 	    return INT_TYPE;
 #else
@@ -121,6 +140,12 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "NULL_TYPE"))
+#ifdef NULL_TYPE
+	    return NULL_TYPE;
+#else
+	    goto not_there;
+#endif
 	break;
     case 'P':
 	if (strEQ(name, "PRI_KEY_FLAG"))
@@ -130,10 +155,26 @@ int arg;
 	    goto not_there;
 #endif
 	break;
-    case 'r':
-	if (strEQ(name, "realtype"))
+    case 'R':
+	if (strEQ(name, "REAL_TYPE"))
 #ifdef REAL_TYPE
 	    return REAL_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
+    case 'S':
+	if (strEQ(name, "SYSVAR_TYPE"))
+#ifdef SYSVAR_TYPE
+	    return SYSVAR_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
+    case 'V':
+	if (strEQ(name, "VARCHAR_TYPE"))
+#ifdef VARCHAR_TYPE
+	    return VARCHAR_TYPE;
 #else
 	    goto not_there;
 #endif
@@ -380,6 +421,87 @@ constant(name,arg)
 	char *		name
 	int		arg
 
+char *
+msqlgethostinfo(package = "Msql")
+     PROTOTYPE:
+     CODE:
+     RETVAL = msqlGetHostInfo();
+     OUTPUT:
+     RETVAL
+     
+char *
+msqlgetserverinfo(package = "Msql")
+     PROTOTYPE:
+     CODE:
+     RETVAL = msqlGetServerInfo();
+     OUTPUT:
+     RETVAL
+     
+int
+msqlgetprotoinfo(package = "Msql")
+     PROTOTYPE:
+     CODE:
+     RETVAL = msqlGetProtoInfo();
+     OUTPUT:
+     RETVAL
+     
+SysRet
+msqlcreatedb(handle,db)
+     Msql		handle
+     char *	db
+     PROTOTYPE: $$
+     CODE:
+     {
+      dRESULT;
+      readSOCKET;
+      RETVAL = msqlCreateDB(sock,db);
+      if (RETVAL == -1) {ERRMSG;}
+     }
+     OUTPUT:
+     RETVAL
+
+SysRet
+msqldropdb(handle,db)
+     Msql		handle
+     char *	db
+     PROTOTYPE: $$
+     CODE:
+     {
+      dRESULT;
+      readSOCKET;
+      RETVAL = msqlDropDB(sock,db);
+      if (RETVAL == -1) {ERRMSG;}
+     }
+     OUTPUT:
+     RETVAL
+
+SysRet
+msqlshutdown(handle)
+     Msql		handle
+     PROTOTYPE: $
+     CODE:
+     {
+      dRESULT;
+      readSOCKET;
+      RETVAL = msqlShutdown(sock);
+      if (RETVAL == -1) {ERRMSG;}
+     }
+     OUTPUT:
+     RETVAL
+
+SysRet
+msqlreloadacls(handle)
+     Msql		handle
+     PROTOTYPE: $
+     CODE:
+     {
+      dRESULT;
+      readSOCKET;
+      RETVAL = msqlReloadAcls(sock);
+      if (RETVAL == -1) {ERRMSG;}
+     }
+     OUTPUT:
+     RETVAL
 
 void
 msqlconnect(package = "Msql",host=NULL,db=NULL)
@@ -427,7 +549,7 @@ msqlconnect(package = "Msql",host=NULL,db=NULL)
 }
 
 SysRet
-msqlSelectDB(handle, db)
+msqlselectdb(handle, db)
      Msql		handle
      char *		db
    PROTOTYPE: $$

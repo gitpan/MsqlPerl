@@ -22,8 +22,8 @@ $Config{'startperl'}
 !GROK!THIS!
 print OUT <<'!NO!SUBS!';
 
-# $Id: pmsql.PL,v 1.23 1996/06/27 00:16:20 k Exp $
-my $version = substr q$Revision: 1.23 $, 10;
+# $Id: pmsql.PL,v 1.24 1996/06/29 12:49:38 k Exp $
+my $version = substr q$Revision: 1.24 $, 10;
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -47,7 +47,7 @@ $^W = 1;
 # typelabels
 
 my(@typelabel);
-@typelabel[Msql::CHAR_TYPE(),Msql::INT_TYPE(),Msql::REAL_TYPE()] = qw(char int real);
+@typelabel[Msql::chartype(),Msql::inttype(),Msql::realtype(),Msql::idxtype()] = qw(char int real index);
 
 # host
 
@@ -125,7 +125,7 @@ q[uit]                                   leave pmsql
     # Look closer what they said
     #
 
-    my($command,@arg) = /^\s*(\w+)\s*(\w*)\s*(\w*)/;
+    my($command,@arg) = /^\s*(\S+)\s*(\S*)\s*(\S*)/;
     next unless defined $command;
 
     if ($command =~ /^ho(s(t)?)?$/i) {
@@ -255,7 +255,7 @@ sub complete {
 	$line =~ /^[\!\?qch]/i ? () :
 	$line =~ /^da/i ? complete_database($word) :
 	$line =~ /^de/i ? complete_table_or_field($word,$line) :
-	$line =~ /^dr/i ? complete_table($word) :
+	$line =~ /^dr/i ? complete_table($word,$line) :
 	$line =~ /^in/i ? complete_table_or_field($word,$line) :
 	$line =~ /^re/i ? complete_table_or_field($word,$line) :
 	$line =~ /^se/i ? complete_table_or_field($word,$line) :
@@ -358,7 +358,7 @@ sub relshow {
 	    for ($i=0;$i<$max;$i++){
 		push @m, sprintf " | %-".$fieldwidth."s | %-4s | %6s |     %-2s   |  %-2s |\n",
 			$sth->name->[$i],
-			$typelabel[$sth->type->[$i]] || "unknown",
+			$typelabel[$sth->type->[$i]] || ("unknown-".$sth->type->[$i]),
 			$sth->length->[$i],
 			$sth->is_not_null->[$i] ? "Y" : "N",
 			$sth->is_pri_key->[$i] ? "Y" : "N";

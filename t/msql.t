@@ -10,7 +10,7 @@ $host ||= shift @ARGV || "";
 
 # That's the standard perl way tostart a testscript. It announces that
 # so many tests follow
-print "1..64\n";
+print "1..65\n";
 
 use Msql;
 
@@ -262,7 +262,7 @@ $dbh3->database eq "test" and print("ok 27\n") or die "not ok 27\n";
 # For what it's worth, we have a tough job for the server here. First
 # we define two simple subroutines
 sub create {"create table $_[0] ( name char(40) not null, 
-            num int primary key, country char(4), time real )";}
+            num int, country char(4), time real )";}
 sub drop {"drop table $_[0]";}
 
 # Then we insert some nonsense changing the dbhandle quickly
@@ -316,8 +316,14 @@ if ( $dbh2->Query("drop table $firsttable") ) {
 
 # The following tests show, that NULL fields (introduced with
 # msql-1.0.6) are handled correctly:
-$dbh->Query("create table $firsttable ( she char(14) primary key,
+if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
+    $dbh->Query("create table $firsttable ( she char(14) primary key,
 	him int, three char(1))") or die;
+} else {
+    $dbh->Query("create table $firsttable ( she char(14),
+	him int, three char(1))") or die;
+####XXX    $dbh->Query("create unique index Xperl1 on $firsttable ( she )") or die;
+}
 
 # As you see, we don't insert a value for "him" and "three", so we can
 # test the undefinedness
@@ -419,3 +425,11 @@ while (%hash = $sth_query->fetchhash) {
 
 $dbh->Query("drop table $firsttable") or die $Msql::db_errstr;
 
+# Although it is a bad idea to specify constants in lowercase,
+# I have to test if it is supported as it has been documented:
+
+if (Msql::int___type() == INT_TYPE) {
+    print "ok 65\n";
+} else {
+    print "not ok 65\n";
+}
