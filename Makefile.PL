@@ -17,19 +17,24 @@ WriteMakefile(
 
 sub initialize {
     my %X=();
-    my $minervadir="/usr/local/Minerva";
+    my @msqldir = qw(/usr/local/Hughes /usr/local/Minerva /usr/local);
+    my($msqldir,$gooddir);
 
-    if (-f "$minervadir/include/msql.h") {
-	print "Assuming \"$minervadir\" is your Minerva directory\n";
-    } else {
-	$minervadir=prompt("
-Where is your msql installed? Please name the directory that contains
-the subdirs lib/ and include/.",$minervadir);
+    for $msqldir (@msqldir) {
+	if (-f "$msqldir/include/msql.h") {
+	    print "Assuming \"$msqldir/{lib,include}\" are the directories containing msql library and headerfile\n";
+	    $gooddir = $msqldir;
+	    last;
+	}
     }
+    $gooddir ||= $msqldir[0];
+    $gooddir=prompt("
+Where is your msql installed? Please name the directory that contains
+the subdirs lib/ and include/.",$gooddir);
     
-    my $headerdir="$minervadir/include";
+    my $headerdir="$gooddir/include";
     die "No msql.h file found\n" unless -f "$headerdir/msql.h";
-    my $libdir="$minervadir/lib";
+    my $libdir="$gooddir/lib";
     
     @headerfiles = ("$headerdir/msql.h");
     $X{LIBS}     = "-L$libdir -lmsql";

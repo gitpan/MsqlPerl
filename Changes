@@ -1,10 +1,17 @@
+June 7, 1996
+   Improved pmsql's as_string method and documented it. Control
+   characters and backslashes are escaped now.
+
+   Improved the manpage wrt listfields. Added precanned reply to the
+   FAQ.
+
 June 1, 1996
    Made all methods lowercase internally and ignore case to enable
    backwards compatibility.
 
    Added basic completion to the pmsql monitor.
 
-   Added a fetchhash method. Benchmark
+   Added a fetchhash method. Benchmark in the FAQ.
 
 May 28, 1996
    Added pmsql(1), version 1.14 or so, which integrates relshow as a
@@ -15,8 +22,8 @@ May 28, 1996
 
    Added an example of ListFields usage to msql.t.
 
-   Deleted a the (outcommented) Tie code in Msql.pm as it won't come
-   back for sure.
+   Deleted the (anyway outcommented) Tie code in Msql.pm as it won't
+   come back for sure.
 
 April 30, 1996
    Added a relshow(1) clone to the distribution just to have a sample
@@ -60,7 +67,8 @@ July 8, 1995
 
 June 4, 1995
     Introduced the handling of NULL fields that comes with msql 1.0.6.
-    That should be a fully backwards compatible solution.
+    That should be a fully backwards compatible solution. (Thanks to
+    Dirk vanGulik <Dirk.vanGulik@jrc.it> for giving it a go)
 
     IQuery is gone, it turned out to be of no use at all. FastQuery is
     still there.
@@ -104,3 +112,5 @@ Feb 13, 1995
 
 About August 1994
     First alpha release.
+
+

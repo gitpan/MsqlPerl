@@ -22,8 +22,8 @@ $Config{'startperl'}
 !GROK!THIS!
 print OUT <<'!NO!SUBS!';
 
-# $Id: pmsql.PL,v 1.21 1996/06/01 19:53:37 k Exp $
-my $version = substr q$Revision: 1.21 $, 10;
+# $Id: pmsql.PL,v 1.23 1996/06/27 00:16:20 k Exp $
+my $version = substr q$Revision: 1.23 $, 10;
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -79,6 +79,14 @@ Readline support $rl_avail
 
 };
 }
+
+#
+# Formatting of the tables
+#
+
+$Msql::Statement::Optimize_Table=1;
+
+
 
 while ( defined ($_ = $term->readline($prompt)) ) {
 
@@ -147,8 +155,12 @@ q[uit]                                   leave pmsql
 
 	# This is a query
 
-	s/\\[qgp]$//;
+	unless ($database) {
+	    print "No default database defined\n";
+	    next;
+	}
 	my $Db = Msql->Connect($host,$database) or next;
+	s/\\[qgp]$//;
 	$::Q = $Db->Query($_) or next;
 	print "Query ok\n";
 	if (ref $::Q) {
@@ -166,30 +178,60 @@ q[uit]                                   leave pmsql
 exit;
 
 package Msql::Statement;
+use vars qw($Optimize_Table);
+
+sub unctrl {
+    my($x) = @_;
+    $x =~ s/\\/\\\\/g;
+    $x =~ s/([\001-\037\177])/sprintf("\\%03d",unpack("C",$1))/eg;
+    $x;
+}
 
 sub as_string {
     my($sth) = @_;
     my($plusline,$titline,$sprintf,$result,$s) = ('+','|','|');
-    for (0..$sth->numfields-1) {
-	my $l;
-	if ($sth->type->[$_] == Msql::INT_TYPE()){
-	    $l = 10;
-	} elsif ($sth->type->[$_] == Msql::REAL_TYPE()){
-	    $l = 16;
-	} else {
-	    $l = $sth->length->[$_];
+    if ($Optimize_Table) {
+	my(@sprintf,$l);
+	for (0..$sth->numfields-1) {
+	    $sprintf[$_] = length($sth->name->[$_]);
 	}
-	$l < length($sth->name->[$_]) and $l = length($sth->name->[$_]);
-	$plusline .= "-" x $l . "+";
-	$titline .= $sth->name->[$_] . " " x ($l - length($sth->name->[$_])) . "|";
-	$sprintf .= $sth->type->[$_] == Msql::CHAR_TYPE() ? "%-$ {l}s|" : "%$ {l}s|";
+	$sth->DataSeek(0);
+	my(@row);
+	while (@row = map {defined $_ ? unctrl($_) : "NULL"} $sth->FetchRow) {
+	    foreach (0..$#row) {
+		$sprintf[$_] = length($row[$_]) if length($row[$_]) > $sprintf[$_];
+	    }
+	}
+	for (0..$sth->numfields-1) {
+	    $l = $sprintf[$_];
+	    $l *= -1 if 
+		$sth->type->[$_] == Msql::CHAR_TYPE();
+	    $plusline .= sprintf "%$ {l}s+", "-" x $sprintf[$_];
+	    $titline .= sprintf "%$ {l}s|", $sth->name->[$_];
+	    $sprintf .= "%$ {l}s|";
+	}
+    } else {
+	for (0..$sth->numfields-1) {
+	    my $l;
+	    if ($sth->type->[$_] == Msql::INT_TYPE()){
+		$l = 10;
+	    } elsif ($sth->type->[$_] == Msql::REAL_TYPE()){
+		$l = 16;
+	    } else {
+		$l = $sth->length->[$_];
+	    }
+	    $l < length($sth->name->[$_]) and $l = length($sth->name->[$_]);
+	    $plusline .= "-" x $l . "+";
+	    $titline .= $sth->name->[$_] . " " x ($l - length($sth->name->[$_])) . "|";
+	    $sprintf .= $sth->type->[$_] == Msql::CHAR_TYPE() ? "%-$ {l}s|" : "%$ {l}s|";
+	}
     }
     $sprintf .= "\n";
-    print $@ if $@;
+    #WHY?: print $@ if $@;
     $result = "$plusline\n$titline\n$plusline\n";
     $sth->DataSeek(0);
     my(@row);
-    while (@row = map {defined $_ ? $_ : "NULL"} $sth->FetchRow) {
+    while (@row = map {defined $_ ? unctrl($_) : "NULL"} $sth->FetchRow) {
 	$result .= sprintf $sprintf, @row;
     }
     $result .= "$plusline\n";
@@ -270,6 +312,14 @@ sub find_exe {
     }
 }
 
+sub longest {
+    my $l = 0;
+    for (@_) {
+	$l=length if length > $l
+    }
+    $l;
+}
+
 sub relshow {
     if (@_ && $_[0] eq "-h") {
 	shift @_;
@@ -292,14 +342,21 @@ sub relshow {
 	return "Couldn't connect to $database\n" unless $Dbh->SelectDB($database);
 	push @m, "\nDatabase = $database\n";
 	if ($table = shift @_) {
+	    #
+	    # relshow database table
+	    #
+
 	    grep /^\Q$table\E$/, $Dbh->ListTables or return join "", @m, qq{Table "$table" not found\n};
 	    my $sth = $Dbh->ListFields($table) or return join "", @m, qq{Error reading listfields($table)\n};
-	    my $border = " +-----------------+--------+--------+----------+-----+\n";
-	    push @m, qq{Table = $table
-$border |     Field       |  Type  | Length | Not Null | Key |\n$border};
+	    my $fieldwidth = longest($sth->name,"Field") || 15;
+	    my $border = " +-".("-"x$fieldwidth)."-+------+--------+----------+-----+\n";
+	    push @m, qq{Table = $table\n};
+	    push @m, $border;
+	    push @m, sprintf " | %-".$fieldwidth."s | Type | Length | Not Null | Key |\n", "Field";
+	    push @m, $border;
 	    my $max = $sth->numfields;
 	    for ($i=0;$i<$max;$i++){
-		push @m, sprintf " | %-14s  | %-6s | %6s |     %-2s   |  %-2s |\n",
+		push @m, sprintf " | %-".$fieldwidth."s | %-4s | %6s |     %-2s   |  %-2s |\n",
 			$sth->name->[$i],
 			$typelabel[$sth->type->[$i]] || "unknown",
 			$sth->length->[$i],
@@ -308,6 +365,10 @@ $border |     Field       |  Type  | Length | Not Null | Key |\n$border};
 	    }
 	    push @m, "$border\n";
 	} else {
+	    #
+	    # relshow database
+	    #
+
 	    my @l = $Dbh->ListTables;
 	    if (@l) {
 		my $border = "  +---------------------+\n";
@@ -323,6 +384,10 @@ $border  |       Table         |\n$border};
 	    }
 	}
     } else {
+	#
+	# relshow
+	#
+
 	my @l = $Dbh->ListDBs;
 	if (@l) {
 	    my $border = "  +------------------+\n";
@@ -356,9 +421,9 @@ C<pmsql [-h host] [database]>
 
 pmsql lets you talk to a running msql daemon sending either SQL
 queries or relshow commands. The output is formatted much in the same
-way as by the msql monitor and the relshow program, which are both
-coming with msql. The additional capability is a connection to a
-readline interface (if available) and a pipe to your favorite
+way as by the msql monitor (see below) and the relshow program, which
+are both coming with msql. The additional capability is a connection
+to a readline interface (if available) and a pipe to your favorite
 pager. Additionally you may switch between hosts and databases within
 one session and you don't have to type the nasty C<\g> (a trailing
 C<\g>, C<\q>, and C<\p> will be ignored).
@@ -401,7 +466,7 @@ Leave pmsql
 
 =back
 
-=head1 GLOBAL VARIABLE
+=head2 Global Variable
 
 The global variable C<$Q> is used for the statement handle of the
 current query. You can use this variable in eval statements.
@@ -409,7 +474,7 @@ current query. You can use this variable in eval statements.
 There's no global variable for the database connection, because we
 connect to the database for each command separately.
 
-=head1 Completion
+=head2 Completion
 
 pmsql comes with some basic completion definitions that are far from
 being perfect. Completion means, you can use the TAB character to run
@@ -417,8 +482,80 @@ some lookup routines on the current host or database and use the
 results to save a few keystrokes.
 
 The completion mechanism is very basic, and I'm not intending to
-refine it in the near future. Feel free to implement your own and let
-me know, if you have something better than what we have here.
+refine it in the near future. Feel free to implement your own
+refinements and let me know, if you have something better than what we
+have here.
+
+=head2 Msql::Statement::as_string
+
+The output of select commands is formatted by an
+Msql::Statement::as_string method. This works similar to the msql
+monitor with a few exceptions:
+
+=over 2
+
+=item the width of a column
+
+is calculated by examining the width of all entries in that column
+
+=item control characters
+
+are mapped into their backslashed octal
+representation
+
+=item backslashes
+
+are doubled (C<\\ instead of \>)
+
+=item numeric values
+
+are adjusted right (both integer and floating point values)
+
+=back
+
+The differences are illustrated by the following table:
+
+Input to msql (a real carriage return here replaced with ^M):
+
+    CREATE TABLE demo (
+      first_field CHAR(10),
+      second_field INT
+    ) \g
+
+    INSERT INTO demo VALUES ('new
+    line',2)\g
+    INSERT INTO demo VALUES ('back\\slash',1)\g
+    INSERT INTO demo VALUES ('cr^Mcrnl
+    nl',3)\g
+
+Output of msql:
+
+     +-------------+--------------+
+     | first_field | second_field |
+     +-------------+--------------+
+     | new
+    line    | 2            |
+     | back\slash  | 1            |
+    crnlr
+    nl  | 3            |
+     +-------------+--------------+
+
+Output of pmsql:
+
+    +----------------+------------+
+    |first_field     |second_field|
+    +----------------+------------+
+    |new\010line     |           2|
+    |back\\slash     |           1|
+    |cr\013crnl\010nl|           3|
+    +----------------+------------+
+
+=head1 BUGS
+
+pmsql is not an msql clone. If you use it as such for bulk uploads
+into the database, you will notice an enourmous disadvantage in
+performance. The reason is that pmsql intentionally disconnects from
+the database after every query.
 
 =head1 SEE ALSO
 

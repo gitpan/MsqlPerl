@@ -35,17 +35,6 @@ typedef HV *Msql;
   m_row		cur
 
 
-#define dSTATE		\
-  dRESULT;			\
-  AV *		avkey;		\
-  AV *		avnam;		\
-  AV *		avnnl;		\
-  AV *		avtab;		\
-  AV *		avtyp;		\
-  AV *		avlen;		\
-  int		off = 0;	\
-  m_field *	curField
-
 #define ERRMSG				\
     sv = perl_get_sv(name,TRUE);	\
     sv_setpv(sv,msqlErrMsg);		\
@@ -179,14 +168,6 @@ fetchinternal(handle, key)
 
   readRESULT;
   switch (*key){
-  case 'D':
-    if (strEQ(key, "DATABASE"))
-      RETVAL = newSVpv("NOIDEA",6);
-    break;
-  case 'H':
-    if (strEQ(key, "HOST"))
-      RETVAL = newSVpv("NOIDEA",6);
-    break;
   case 'I':
     if (strEQ(key, "ISNOTNULL")){
       iniAV;
@@ -244,10 +225,6 @@ fetchinternal(handle, key)
   case 'R':
     if (strEQ(key, "RESULT"))
       RETVAL = newSViv((IV)result);
-    break;
-  case 'S':
-    if (strEQ(key, "SOCK"))
-      RETVAL = newSVpv("NOIDEA",6);
     break;
   case 'T':
     if (strEQ(key, "TABLE")) {

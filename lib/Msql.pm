@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.07";
-# $Revision: 1.92 $$Date: 1996/06/01 19:53:37 $$RCSfile: Msql.pm,v $
+$VERSION = "1.08";
+# $Revision: 1.93 $$Date: 1996/06/27 00:16:20 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -205,16 +205,20 @@ $sth knows about all metadata that are provided by the API:
   @arr  = $sth->length;      array of the length of each field in bytes
 
 The six last methods return an array in array context and an array
-reference (L<perlref/> for details) when called in a scalar
-context. The scalar context is useful, if you need only the name of
-one column, e.g.
+reference (see L<perlref> and L<perlldsc> for details) when called in
+a scalar context. The scalar context is useful, if you need only the
+name of one column, e.g.
 
     $name_of_third_column = $sth->name->[2]
 
+which is equivalent to
+
+    @all_column_names = $sth->name;
+    $name_of_third_column = $all_column_names[2];
 
 =head2 The C<-w> switch
 
-Also with Msql the C<-w> switch is your friend! If you call your perl
+With Msql the C<-w> switch is your friend! If you call your perl
 program with the C<-w> switch you get the warnings that normally are
 stored in $Msql::db_errstr on STDERR. This is a handy method to get
 the error messages from the msql server without coding it into your
