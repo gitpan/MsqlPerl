@@ -4,8 +4,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.15";
-# $Revision: 1.101 $$Date: 1997/01/20 20:07:56 $$RCSfile: Msql.pm,v $
+$VERSION = "1.16";
+# $Revision: 1.102 $$Date: 1997/03/20 12:05:11 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -44,8 +44,10 @@ sub database { return shift->{'DATABASE'} }
 sub quote	{
     my $self = shift;
     my $str = shift;
-    $str =~ s/\\/\\\\/g;
-    $str =~ s/\'/\\\'/g;
+    return 'NULL' unless defined $str;
+    my $trunc = shift;
+    substr($str,$trunc) = '' if defined $trunc and $trunc > 0 and length($str) > $trunc;
+    $str =~ s/([\\\'])/\\$1/g;
     "'$str'";
 }
 
@@ -218,15 +220,24 @@ If you want to use the C<-w> switch but do not want to see the error
 messages from the msql daemon, you can set the variable $Msql::QUIET
 to some true value, and they will be supressed.
 
-=head2 -E<gt>quote($str)
+=head2 -E<gt>quote($str [, $length])
 
 returns the argument enclosed in single ticks ('') with any special
 character escaped according to the needs of the API. Currently this
 means, any single tick within the string is escaped with a backslash
 and backslashes are doubled. Currently (as of msql-1.0.16) the API
 does not allow to insert binary nulls into tables. The quote method
-does not fix this deficiency, so use it at your own risk for binary
-nulls.
+does not fix this deficiency.
+
+If you pass undefined values to the quote method, it returns the
+string C<NULL>.
+
+If a second parameter is passed to C<quote>, the result is truncated
+to that many characters.
+
+=head2 NULL fields
+
+NULL fields in tables are returned to perl as undefined values.
 
 =head2 Metadata
 
@@ -417,9 +428,13 @@ empty strings or zero I<before> the first call to connect().
 
 =head2 Administration
 
-shutdown, creatdb, dropdb, reloadacls are all accessible via a
+shutdown, createdb, dropdb, reloadacls are all accessible via a
 database handle and implement the corresponding methods to what
 msqladmin does.
+
+The mSQL engine does not permit that these commands are invoked by
+other users than the administrator ofthe database. So please make sure
+to check the return and error code when you issue one of them.
 
 =head2 StudlyCaps
 

@@ -341,7 +341,7 @@ sub drop { shift->query("drop table $_[0]"); }
     my $N=1;
     drop($dbh2,$firsttable);
     $firsttable = create($dbh2,$firsttable,"( name char(40) not null,
-            num int, country char(4), time real )");
+            num int, country char(4), mytime real )");
 
     for (1..5){
 	$dbh2->query("insert into $firsttable values
@@ -368,10 +368,10 @@ $dbh2->query("select * from $firsttable")->numrows == 10
 for (1..3){
     drop($dbh2,$firsttable);
     $secondtable = create($dbh3,$secondtable,"( name char(40) not null,
-            num int, country char(4), time real )");
+            num int, country char(4), mytime real )");
     drop($dbh2,$secondtable);
     $firsttable = create($dbh3,$firsttable,"( name char(40) not null,
-            num int, country char(4), time real )");
+            num int, country char(4), mytime real )");
 }
 drop($dbh2,$firsttable) and  print("ok 29\n") or print("not ok 29\n");
 
@@ -404,7 +404,7 @@ if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syn
 } else {
     $firsttable = create($dbh,$firsttable,"( she char(14),
 	him int, who char(1))") or test_error();
-    $dbh->query("create unique index Xperl1 on $firsttable ( she )") or test_error();
+    $dbh->query("create unique index she_index on $firsttable ( she )") or test_error();
 }
 
 # As you see, we don't insert a value for "him" and "who", so we can
@@ -485,10 +485,10 @@ if ($@ =~ /^Can\'t call method/) {
     
     # The only difference: the ListFields sth must not have a row associated with
     local($^W) = 0;
-    if ($sth_listf->numrows == 0) {
+    my($got) = $sth_listf->numrows;
+    if (!defined $got or $got == 0) {
 	print "ok 61\n";
     } else {
-	my $got = $sth_listf->numrows;
 	print "not ok 61 - got [$got]\n";
     }
     if ($sth_query->numrows > 0) {
@@ -534,13 +534,24 @@ if (Msql::int___type() == INT_TYPE) {
 
 $query = "create table $firsttable (ascii int, character char(1))";
 $dbh->query($query) or test_error;
-for (1..255) {
-    my $chr = $dbh->quote(chr($_));
+my $nchar;
+for $nchar (1..255) {
+    my $chr = $dbh->quote(chr($nchar));
     $query = qq{
-	insert into $firsttable values ($_, $chr)
+insert into $firsttable values ($nchar, $chr)
     };
-    $dbh->query($query) or print "not ok 66\n"; # well, could happen more thn once, but ...
+    unless ($dbh->query($query)) {
+	$query = unctrl($query);
+	print "not ok 66 (q[$query] err[$Msql::db_errstr])\n"; # well, could happen more thn once, but ...
+    }
 }
+
+sub unctrl {
+    my $str = shift;
+    $str =~ s/([\000-\037\177])/ '^' . pack('c', ord($1) ^ 64) /eg;
+    return $str;
+}
+
 $sth = $dbh->query("select * from $firsttable") or test_error;
 if ($sth->numrows() == 255){
     print "ok 66\n";

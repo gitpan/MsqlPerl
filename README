@@ -2,7 +2,7 @@ The code in this package is
 
 Copyright (c) 1994-1997 Andreas König <a.koenig@mind.de>
 
-and may be used, copied and redistributed under the same terms as perl 
+and may be used, copied and redistributed under the same terms as perl
 (see the files README, Copying and Artistic in the perl distribution).
 
 Prerequisites
@@ -14,8 +14,15 @@ database engine from
 
     http://Hughes.com.au
 
-Please follow the links there. Both mSQL-1 and mSQL-2 are supported
-with MsqlPerl.
+Please follow the links there.
+
+    ###########################################################
+    ###########################################################
+    ##  						     ##
+    ##  Both mSQL-1 and mSQL-2 are supported with MsqlPerl.  ##
+    ##  						     ##
+    ###########################################################
+    ###########################################################
 
 To use the adaptor you definitely have to install the database and the
 library first. From the perl side perl5.003 is required.
@@ -48,7 +55,7 @@ with:
 You can open as many queries as you like simultaneously by selecting a
 different scalar to hold the object:
 
-    $another_sth = $dbh->Query("select bar from foo");
+    $another_sth = $dbh->query("select bar from foo");
 
 The statement handle allows you to step through the virtual table
 returned from the database with the FetchRow method:

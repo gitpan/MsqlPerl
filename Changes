@@ -1,3 +1,14 @@
+=head1 March 20, 1997
+
+Applied patch from Hugo van der Sanden E<lt>hv@iii.co.ukE<gt> to
+support NULL in the quote method.
+
+Followed a suggestion by Vivek Khera to support a second parameter to
+the quote method.
+
+Updated the test suite because the mSQL-2.0B5 has new reserved words
+and I did in fact use "time" as a column name :-(
+
 =head1 December 21, 1996
 
 Improved documentation about mSQL-2.
