@@ -14,7 +14,7 @@ sub AUTOLOAD {
 	       $AUTOLOAD eq "length" ||
 	       $AUTOLOAD eq "db";
     my $auto = uc $AUTOLOAD;
-    eval "sub $AUTOLOAD {return shift->{$auto};}";
+    eval "sub $AUTOLOAD {return shift->fetchinternal($auto);}";
     goto &$AUTOLOAD;
 }
 

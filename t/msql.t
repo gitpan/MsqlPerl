@@ -16,7 +16,7 @@ sub  Insert {
     my ($sth,@namearr,$pack,$file,$line);
     my ($name,$type);
 
-    $sth=$self->FastListFields($table);
+    $sth=$self->ListFields($table);
     $name=$sth->fetchinternal(NAME);
     $type=$sth->fetchinternal(TYPE);
 
@@ -44,7 +44,7 @@ sub  Insert {
     }
     $query .= join ",", @arr;
     $query .= ")";
-    $self->FastQuery($query);
+    $self->Query($query);
 }
 
 package main;
@@ -233,9 +233,9 @@ if ("@{$sth->length}" eq "40 4 4 8"){
     print "not ok 30\n";
 }
 
-if ( $dbh1->FastQuery("create table $tables[0] (FOO int)") ) { 
+if ( $dbh1->Query("create table $tables[0] (FOO int)") ) { 
     print "ok 31\n" } else {print "not ok 31\n"};
-if ( $dbh1->FastQuery("drop table $tables[0]") ) { 
+if ( $dbh1->Query("drop table $tables[0]") ) { 
     print "ok 32\n" } else {print "not ok 32\n"};
 
 

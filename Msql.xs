@@ -50,11 +50,11 @@ typedef HV *Msql;
     sv_setpv(sv,msqlErrMsg);		\
     if (dowarn && ! SvTRUE(perl_get_sv("Msql::QUIET",TRUE)))				\
       warn("MSQL's message: %s", msqlErrMsg);	\
-    ST(0) = &sv_undef
+    XSRETURN_UNDEF;
 
-/* 
-    not sure, which is better: above line may be coded alternatively:
-    ST(0) = sv_newmortal()
+/*
+former coding:
+    ST(0) = &sv_undef
 */
 
 #define readSOCKET				\
@@ -91,42 +91,11 @@ typedef HV *Msql;
 /* this is not the location where we leak! */
 #define retMSQLRESULT						\
     hv_store(hv,"RESULT",6,(SV *)newSViv((IV)result),0);	\
-    hv_store(hv,"SOCK",4,svsock,0);		\
-    hv_store(hv,"HOST",4,svhost,0);		\
-    hv_store(hv,"DATABASE",8,svdb,0);		\
     retMSQLSOCK
 
 #define iniHV 	hv = (HV*)sv_2mortal((SV*)newHV())
 
 #define iniAV 	av = (AV*)sv_2mortal((SV*)newAV())
-
-#define fetchMSQLINTERN	\
-    hv_store(hv,"NUMROWS",7,(SV *)newSViv((IV)msqlNumRows(result)),0);	\
-    hv_store(hv,"NUMFIELDS",9,(SV *)newSViv((IV)msqlNumFields(result)),0);	\
-    avnam = (AV*)sv_2mortal((SV*)newAV());	\
-    avtab = (AV*)sv_2mortal((SV*)newAV());	\
-    avtyp = (AV*)sv_2mortal((SV*)newAV());	\
-    avlen = (AV*)sv_2mortal((SV*)newAV());	\
-    avkey = (AV*)sv_2mortal((SV*)newAV());	\
-    avnnl = (AV*)sv_2mortal((SV*)newAV());	\
-    msqlFieldSeek(result,0);	\
-    while (off< msqlNumFields(result)) {	\
-      curField = msqlFetchField(result);	\
-      av_push(avnam,(SV*)newSVpv(curField->name,strlen(curField->name)));	\
-      av_push(avtab,(SV*)newSVpv(curField->table,strlen(curField->table)));	\
-      av_push(avtyp,(SV*)newSViv(curField->type));	\
-      av_push(avlen,(SV*)newSViv(curField->length));	\
-      av_push(avkey,(SV*)newSViv(IS_PRI_KEY(curField->flags)));	\
-      av_push(avnnl,(SV*)newSViv(IS_NOT_NULL(curField->flags)));	\
-      off++;	\
-    }	\
-    rv = newRV((SV*)avnam); hv_store(hv,"NAME",4,rv,0);	\
-    rv = newRV((SV*)avtab); hv_store(hv,"TABLE",5,rv,0);	\
-    rv = newRV((SV*)avtyp); hv_store(hv,"TYPE",4,rv,0);	\
-    rv = newRV((SV*)avlen); hv_store(hv,"LENGTH",6,rv,0);	\
-    rv = newRV((SV*)avkey); hv_store(hv,"IS_PRI_KEY",10,rv,0);	\
-    rv = newRV((SV*)avnnl); hv_store(hv,"IS_NOT_NULL",11,rv,0)
-
 
 static int
 not_here(s)
@@ -524,33 +493,6 @@ msqlQuery(handle, query)
    position-pointer with DataSeek().
    */
 
-  dSTATE;
-  int           tmp = -1;
-
-  /* msqlQuery */
-  readSOCKET;
-  if (sock)
-    tmp = msqlQuery(sock,query);
-  if (tmp == -1 ) {
-    ERRMSG;
-  } else {
-    iniHV;
-    if ( result = msqlStoreResult() ) { 
-      fetchMSQLINTERN;
-    }
-    retMSQLRESULT;
-  }
-}
-
-void
-msqlFastQuery(handle, query)
-   Msql		handle
-     char *	query
-   CODE:
-{
-  /* Like Query, but no Metadata except RESULT: Metadata can be reached via fetchinternal()
-   as shown by the TieMsql class in Msql.pm */
-
   HV *          hv;
   HV *          stash;
   SV *          rv;
@@ -643,29 +585,6 @@ msqlListFields(handle, table)
    no result with FetchRow, but we have a ref to a filled Hash with
    NAME, TABLE, TYPE, IS_PRI_KEY, and IS_NOT_NULL. We do bless into
    msqlStatement, so DESTROY will free the query. */
-
-  dSTATE;
-
-  /* msqlListFields */
-  readSOCKET;
-  if (sock && table)
-    result = msqlListFields(sock,table);
-  if (result == NULL ) {
-    ERRMSG;
-  } else {
-    iniHV;
-    fetchMSQLINTERN;
-    retMSQLRESULT;
-  }
-}
-
-void
-msqlFastListFields(handle, table)
-   Msql			handle
-   char *		table
-   CODE:
-{
-  /* Like ListFiels, but without fetchinternals. */
 
   HV *          hv;
   HV *          stash;
