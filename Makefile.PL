@@ -30,7 +30,6 @@ sub initialize {
 
     for $msqldir (@msqldir) {
 	if (-f "$msqldir/include/msql.h") {
-	    print "Assuming \"$msqldir/{lib,include}\" are the directories containing msql library and headerfile\n";
 	    $gooddir = $msqldir;
 	    last;
 	}

@@ -4,8 +4,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.14";
-# $Revision: 1.100 $$Date: 1996/12/21 12:28:53 $$RCSfile: Msql.pm,v $
+$VERSION = "1.15";
+# $Revision: 1.101 $$Date: 1997/01/20 20:07:56 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 

@@ -284,7 +284,7 @@ fetchinternal(handle, key)
    OUTPUT:
      RETVAL
 
-void
+SV *
 msqlfetchrow(handle)
    Msql::Statement	handle
    PROTOTYPE: $
@@ -320,7 +320,7 @@ msqlfetchrow(handle)
   }
 }
 
-void
+SV *
 msqlfetchhash(handle)
    Msql::Statement	handle
    PROTOTYPE: $
@@ -353,7 +353,7 @@ msqlfetchhash(handle)
   }
 }
 
-void
+SV *
 msqldataseek(handle,pos)
    Msql::Statement	handle
    int			pos
@@ -376,7 +376,7 @@ msqldataseek(handle,pos)
     croak("Could not DataSeek, no result handle found");
 }
 
-void
+SV *
 msqlDESTROY(handle)
    Msql::Statement	handle
    PROTOTYPE: $
@@ -493,6 +493,21 @@ msqldropdb(handle,db)
      RETVAL
 
 SysRet
+msqlcreatedb(handle,db)
+     Msql		handle
+     char *	db
+     PROTOTYPE: $$
+     CODE:
+     {
+      dRESULT;
+      readSOCKET;
+      RETVAL = msqlCreateDB(sock,db);
+      if (RETVAL == -1) {ERRMSG;}
+     }
+     OUTPUT:
+     RETVAL
+
+SysRet
 msqlshutdown(handle)
      Msql		handle
      PROTOTYPE: $
@@ -520,7 +535,7 @@ msqlreloadacls(handle)
      OUTPUT:
      RETVAL
 
-void
+SV *
 msqlconnect(package = "Msql",host=NULL,db=NULL)
      char *		package
      char *		host
@@ -592,7 +607,7 @@ msqlselectdb(handle, db)
  OUTPUT:
 RETVAL
 
-void
+SV *
 msqlquery(handle, query)
    Msql		handle
      char *	query
@@ -633,7 +648,7 @@ msqlquery(handle, query)
   }
 }
 
-void
+SV *
 msqllistdbs(handle)
    Msql		handle
    PROTOTYPE: $
@@ -658,7 +673,7 @@ msqllistdbs(handle)
   }
 }
 
-void
+SV *
 msqllisttables(handle)
    Msql		handle
    PROTOTYPE: $
@@ -683,7 +698,7 @@ msqllisttables(handle)
   }
 }
 
-void
+SV *
 msqllistfields(handle, table)
    Msql			handle
    char *		table
@@ -715,7 +730,7 @@ msqllistfields(handle, table)
   }
 }
 
-void
+SV *
 msqllistindex(handle, table, index)
    Msql			handle
    char *		table
@@ -744,7 +759,7 @@ msqllistindex(handle, table, index)
     not_here("listfields");
 #endif
 
-void
+SV *
 msqlDESTROY(handle)
    Msql			handle
    PROTOTYPE: $

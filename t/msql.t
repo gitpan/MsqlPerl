@@ -39,8 +39,10 @@ my(
 if ($dbh = Msql->connect($host)){
     print "ok 1\n";
 } else {
+    $Msql::db_errstr ||= "";
+    my $onhost = $host ? " (on $host)" : "";
     print STDERR qq{not ok 1: $Msql::db_errstr
-\tIt looks as if your server is not up and running.
+\tIt looks as if your server$onhost is not up and running.
 \tThis test requires a running server.
 \tPlease make sure your server is running and retry.
 };
