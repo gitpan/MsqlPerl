@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.05";
-# $Revision: 1.90 $$Date: 1996/05/28 19:54:32 $$RCSfile: Msql.pm,v $
+$VERSION = "1.07";
+# $Revision: 1.92 $$Date: 1996/06/01 19:53:37 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -14,49 +14,37 @@ require DynaLoader;
 require Exporter;
 @ISA = ('Exporter', 'AutoLoader', 'DynaLoader');
 @EXPORT = qw(
-        &CHAR_TYPE
-        &INT_TYPE
-        &REAL_TYPE
+        CHAR_TYPE
+        INT_TYPE
+        REAL_TYPE
+);
+@EXPORT_OK = qw(
+        chartype
+        inttype
+        realtype
 );
 
+sub chartype { constant("chartype", 0) }
+sub inttype  { constant("inttype", 0) }
+sub realtype { constant("realtype", 0) }
+sub host     { return shift->{'HOST'} }
+sub sock     { return shift->{'SOCK'} }
+sub database { return shift->{'DATABASE'} }
 
 sub AUTOLOAD {
-    if (
-	$AUTOLOAD eq 'Msql::CHAR_TYPE' ||
-	$AUTOLOAD eq 'Msql::INT_TYPE' ||
-	$AUTOLOAD eq 'Msql::REAL_TYPE'
-       ) {
-	local($constname);
-	($constname = $AUTOLOAD) =~ s/.*:://;
-	$val = constant($constname, @_ ? $_[0] : 0);
-	if ($! != 0) {
-	    if ($! =~ /Invalid/) {
-		$AutoLoader::AUTOLOAD = $AUTOLOAD;
-		goto &AutoLoader::AUTOLOAD;
-	    }
-	    else {
-		Carp::croak("Not defined Msql macro $constname");
-	    }
-	}
-	eval "sub $AUTOLOAD { $val }";
-	goto &$AUTOLOAD;
-    } elsif (
-	$AUTOLOAD eq 'Msql::host' ||
-	$AUTOLOAD eq 'Msql::database' ||
-	$AUTOLOAD eq 'Msql::sock'
-	   ) {
-	$AUTOLOAD =~ s/.*://;
-	my $auto = uc $AUTOLOAD;
-	eval "sub $AUTOLOAD {return shift->{$auto};}";
-	goto &$AUTOLOAD;
-    } else {
-	Carp::croak("$AUTOLOAD: Not defined in Msql");
+    my $meth = $AUTOLOAD;
+    $meth =~ s/^Msql:://;
+    $meth =~ s/_//g;
+    $meth = lc($meth);
+
+    if (defined &$meth) {
+	*$meth = \&{$meth};
+	return &$meth(@_);
     }
+    Carp::croak "$AUTOLOAD: Not defined in Msql and not autoloadable";
 }
 
 bootstrap Msql;
-
-package Msql;
 
 1;
 __END__
@@ -71,82 +59,92 @@ Msql - Perl interface to the mSQL database
 
   use Msql;
 	
-  $dbh = Connect Msql;
-  $dbh = Connect Msql $host;
-  $dbh = Connect Msql $host, $database;
+  $dbh = Msql->connect;
+  $dbh = Msql->connect($host);
+  $dbh = Msql->connect($host, $database);
 	
-  SelectDB           $dbh $database;
+  $dbh->selectdb($database);
 	
-  $sth = ListFields  $dbh $table;
-  $sth = Query       $dbh $sql_statement;
+  $sth = $dbh->listfields($table);
+  $sth = $dbh->query($sql_statement);
 	
-  @arr = ListDBs     $dbh;
-  @arr = ListTables  $dbh;
+  @arr = $dbh->listdbs;
+  @arr = $dbh->listtables;
 	
-  @arr = FetchRow    $sth;
+  @arr = $sth->fetchrow;
+  %hash = $sth->fetchhash;
 	
-  DataSeek           $sth $row_number;
+  $sth->dataseek($row_number);
 
 =head1 DESCRIPTION
 
 This package is designed as close as possible to its C API
 counterpart. The manual that comes with mSQL describes most things you
-need. 
+need. Due to popular demand it was decided though, that this interface
+does not use StudlyCaps (see below).
 
 Internally you are dealing with the two classes C<Msql> and
 C<Msql::Statement>. You will never see the latter, because you reach
 it through a statement handle returned by a Query or a ListFields
 statement. The only class you name explicitly is Msql. It offers you
-the Connect command:
+the connect command:
 
-  $dbh = Connect Msql;
-  $dbh = Connect Msql $host;
-  $dbh = Connect Msql $host, $database;
+  $dbh = Msql->connect;
+  $dbh = Msql->connect($host);
+  $dbh = Msql->connect($host, $database);
 
 This connects you with the desired host/database. With no argument or
 with an empty string as the first argument it connects to the UNIX
-socket /dev/msql, which is a big performance gain. A database name as
-the second argument selects the chosen database within the
-connection. The return value is a database handle if the Connect
-succeeds, otherwise the return value is undef.
+socket (usually /dev/msql), which has a much better performance than
+the TCP counterpart. A database name as the second argument selects
+the chosen database within the connection. The return value is a
+database handle if the connect succeeds, otherwise the return value is
+undef.
 
-You will need this handle to gain further access to the
-database. Issue multiple C<Connect> statements -- no problem.
+You will need this handle to gain further access to the database.
 
-  SelectDB $dbh $database;
+   $dbh->selectdb($database);
 
-If you have not chosen a database with the C<Connect> command, or if
+If you have not chosen a database with the C<connect> command, or if
 you want to change the connection to a different database using a
-database handle you have got from a previous C<Connect>, then use
-SelectDB.
+database handle you have got from a previous C<connect>, then use
+selectdb.
 
-  $sth = ListFields  $dbh $table;
-  $sth = Query       $dbh $sql_statement;
+  $sth = $dbh->listfields($table);
+  $sth = $dbh->query($sql_statement);
 
 These two work rather similar as descibed in the mSQL manual. They return
 a statement handle which lets you further explore what the server has
 to tell you. On error the return value is undef.
 
-  @arr = ListDBs     $dbh;
-  @arr = ListTables  $dbh;
+  @arr = $dbh->listdbs();
+  @arr = $dbh->listtables;
 
 An array is returned that contains the requested names without any
 further information.
 
-  @arr = FetchRow   $sth;
+  @arr = $sth->fetchrow;
 
 returns an array of the values of the next row fetched from the
-server.
+server. Similar does
 
-  DataSeek          $sth  $row_number;
+  %hash = $sth->fetchhash;
+
+return a complete hash. The keys in this hash are the column names of
+the table, the values are the table values. Be aware, that when you
+have a table with two identical column names, you will not be able to
+use this method without trashing one column. In such a case, you
+should use the fetchrow method.
+
+  $sth->dataseek($row_number);
 
 lets you specify a certain offset of the data associated with the
-statement handle. The next FetchRow will then return the appropriate
+statement handle. The next fetchrow will then return the appropriate
 row (first row being 0).
 
 =head2 No close statement
 
-Whenever the scalar that holds a database or statement handle looses
+Whenever the scalar that holds a database or statement handle loses
 its value, Msql chooses the appropriate action (frees the result or
 closes the database connection). So if you want to free the result or
 close the connection, choose to do one of the following:
@@ -157,7 +155,7 @@ close the connection, choose to do one of the following:
 
 =item use the handle for another purpose
 
-=item use the handle inside a block and declare it with my()
+=item let the handle run out of scope
 
 =item exit the program.
 
@@ -171,7 +169,7 @@ Now lets reconsider the above methods with regard to metadata.
 
 As said above you get a database handle with
 
-  $dbh = Connect Msql $host, $database;
+  $dbh = Msql->connect($host, $database);
 
 The database handle knows about the socket, the host, and the database
 it is connected to.
@@ -189,26 +187,29 @@ argument.
 
 Two constructor methods return a statement handle:
 
-  $sth = ListFields  $dbh $table;
-  $sth = Query       $dbh $sql_statement;
+  $sth = $dbh->listfields($table);
+  $sth = $dbh->query($sql_statement);
 
 $sth knows about all metadata that are provided by the API:
 
   $scalar = $sth->numrows;    
   $scalar = $sth->numfields;  
 
-  $arrref  = $sth->table;       the names of the tables of each column
-  $arrref  = $sth->name;        the names of the columns
-  $arrref  = $sth->type;        the type of each column, defined in msql.h
-		                and accessible via &Msql::CHAR_TYPE,
-		                &Msql::INT_TYPE, &Msql::REAL_TYPE,
-  $arrref  = $sth->is_not_null; array of boolean
-  $arrref  = $sth->is_pri_key;  array of boolean
-  $arrref  = $sth->length;      array of the length of each field in bytes
+  @arr  = $sth->table;       the names of the tables of each column
+  @arr  = $sth->name;        the names of the columns
+  @arr  = $sth->type;        the type of each column, defined in msql.h
+	                     and accessible via &Msql::chartype,
+	                     &Msql::inttype, &Msql::realtype,
+  @arr  = $sth->isnotnull;   array of boolean
+  @arr  = $sth->isprikey;    array of boolean
+  @arr  = $sth->length;      array of the length of each field in bytes
 
-The six last methods return an array reference (L<perlref/> for
-details) when called in a scalar context. In an array context the
-return the array of the values.
+The six last methods return an array in array context and an array
+reference (L<perlref/> for details) when called in a scalar
+context. The scalar context is useful, if you need only the name of
+one column, e.g.
+
+    $name_of_third_column = $sth->name->[2]
 
 
 =head2 The C<-w> switch
@@ -225,6 +226,22 @@ added.
 If you want to use the C<-w> switch but do not want to see the error
 messages from the msql daemon, you can set the variable $Msql::QUIET
 to some true value, and they will be suppressed.
+
+=head1 StudlyCaps
+
+Real Perl Programmers (C) usually don't like to type I<ListTables> but
+prefer I<list_tables> or I<listtables>. The mSQL API uses StudlyCaps
+everywhere and so did early versions of MsqlPerl. Beginning with
+$VERSION 1.06 all methods are internally in lowercase, but may be
+written however you please. Case is ignored and you may use the
+underline to improve readability.
+
+The price for using different method names is neglectible. Any method
+name you use that can be transformed into a known one, will only be
+defined once within a program and will remain an alias until the
+program terminates. So feel free to run fetch_row or connecT or
+ListDBs as in your old programs. These, of course, will continue to
+work.
 
 =head1 PREREQUISITES
 
@@ -243,9 +260,9 @@ andreas koenig C<koenig@franz.ww.TU-Berlin.DE>
 Alligator Descartes wrote a database driver for Tim Bunce's DBI. I
 recommend anybody to carefully watch the development of this module
 (L<DBI::mSQL>). Msql is a simple, stable, and fast module, and it will
-supported for a long time. But it's a dead end. I expect in the medium
-term, that the DBI efforts result in a richer module family with
-better support and more functionality. Alligator maintains an
+be supported for a long time. But it's a dead end. I expect in the
+medium term, that the DBI efforts result in a richer module family
+with better support and more functionality. Alligator maintains an
 interesting page on the DBI development: http://www.hermetica.com/
 
 =cut

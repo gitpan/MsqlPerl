@@ -1,29 +1,32 @@
 package Msql::Statement;
 
+use vars qw($VERSION);
+
+$VERSION = substr q$Revision: 1.12 $, 10;
+# $Id: Statement.pm,v 1.12 1996/06/01 15:25:47 k Exp $
+
+sub numrows    { shift->fetchinternal( 'NUMROWS'   ) }
+sub numfields  { shift->fetchinternal( 'NUMFIELDS' ) }
+sub table      { return wantarray ? @{shift->fetchinternal('TABLE'    )}: shift->fetchinternal('TABLE'    )}
+sub name       { return wantarray ? @{shift->fetchinternal('NAME'     )}: shift->fetchinternal('NAME'     )}
+sub type       { return wantarray ? @{shift->fetchinternal('TYPE'     )}: shift->fetchinternal('TYPE'     )}
+sub isnotnull  { return wantarray ? @{shift->fetchinternal('ISNOTNULL')}: shift->fetchinternal('ISNOTNULL')}
+sub isprikey   { return wantarray ? @{shift->fetchinternal('ISPRIKEY' )}: shift->fetchinternal('ISPRIKEY' )}
+sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift->fetchinternal('LENGTH'   )}
+
+
 sub AUTOLOAD {
-    $AUTOLOAD =~ s/.*://;
-    # add some code that checks the validity of the function name
-    Carp::croak("Invalid method call '$AUTOLOAD' in package Msql::Statement")
-	unless $AUTOLOAD eq "numrows" || 
-	       $AUTOLOAD eq "numfields" ||
-	       $AUTOLOAD eq "table" ||
-	       $AUTOLOAD eq "name" ||
-	       $AUTOLOAD eq "type" ||
-	       $AUTOLOAD eq "is_not_null" ||
-	       $AUTOLOAD eq "is_pri_key" ||
-	       $AUTOLOAD eq "length";
-    my $auto = uc $AUTOLOAD;
-    if ($AUTOLOAD =~ /^num/) {
-	eval qq{sub $AUTOLOAD {return shift->fetchinternal($auto);}};
-    } else {
-	eval qq{sub $AUTOLOAD {
-			       return wantarray ?
-			       \@{shift->fetchinternal($auto)} :
-			       shift->fetchinternal($auto);
-			      }
-	    };
+    my $meth = $AUTOLOAD;
+    $meth =~ s/^Msql::Statement:://;
+    $meth =~ s/_//g;
+    $meth = lc($meth);
+
+    # Allow them to say fetch_row or FetchRow
+    if (defined &$meth) {
+	*$AUTOLOAD = \&{$meth};
+	return &$AUTOLOAD(@_);
     }
-    goto &$AUTOLOAD;
+    Carp::croak "$AUTOLOAD not defined and not autoloadable";
 }
 
 1;

@@ -10,7 +10,7 @@ $host ||= shift @ARGV || "";
 
 # That's the standard perl way tostart a testscript. It announces that
 # so many tests follow
-print "1..62\n";
+print "1..64\n";
 
 use Msql;
 
@@ -395,6 +395,25 @@ if ($sth_query->numrows > 0) {
     print "ok 62\n";
 } else {
     print "not ok 62\n";
+}
+
+# Please understand that features that were added later to the module
+# are tested later. Here's a very nice test. Should be easier to
+# understand than the others:
+
+$sth_query->dataseek(0);
+$i = 63;
+while (%hash = $sth_query->fetchhash) {
+
+    # fetchhash stuffs the contents of the row directly into a hash
+    # instead of a row. We have only two lines to check. Column she
+    # has to be either 'jazz' or 'x'.
+    if ($hash{she} eq 'jazz' or $hash{she} eq 'x') {
+	print "ok $i\n";
+    } else {
+	print "not ok $i\n";
+    }
+    $i++;
 }
 
 

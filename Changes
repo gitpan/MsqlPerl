@@ -1,3 +1,11 @@
+June 1, 1996
+   Made all methods lowercase internally and ignore case to enable
+   backwards compatibility.
+
+   Added basic completion to the pmsql monitor.
+
+   Added a fetchhash method. Benchmark
+
 May 28, 1996
    Added pmsql(1), version 1.14 or so, which integrates relshow as a
    method. Deleted standalone relshow(1).

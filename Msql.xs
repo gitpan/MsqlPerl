@@ -109,43 +109,21 @@ int arg;
 {
     errno = 0;
     switch (*name) {
-    case 'A':
-	break;
-    case 'B':
-	break;
-    case 'C':
-	if (strEQ(name, "CHAR_TYPE"))
+    case 'c':
+	if (strEQ(name, "chartype"))
 #ifdef CHAR_TYPE
 	    return CHAR_TYPE;
 #else
 	    goto not_there;
 #endif
 	break;
-    case 'D':
-	break;
-    case 'E':
-	break;
-    case 'F':
-	break;
-    case 'G':
-	break;
-    case 'H':
-	break;
-    case 'I':
-	if (strEQ(name, "INT_TYPE"))
+    case 'i':
+	if (strEQ(name, "inttype"))
 #ifdef INT_TYPE
 	    return INT_TYPE;
 #else
 	    goto not_there;
 #endif
-	break;
-    case 'J':
-	break;
-    case 'K':
-	break;
-    case 'L':
-	break;
-    case 'M':
 	break;
     case 'N':
 	if (strEQ(name, "NOT_NULL_FLAG"))
@@ -155,8 +133,6 @@ int arg;
 	    goto not_there;
 #endif
 	break;
-    case 'O':
-	break;
     case 'P':
 	if (strEQ(name, "PRI_KEY_FLAG"))
 #ifdef PRI_KEY_FLAG
@@ -165,31 +141,13 @@ int arg;
 	    goto not_there;
 #endif
 	break;
-    case 'Q':
-	break;
-    case 'R':
-	if (strEQ(name, "REAL_TYPE"))
+    case 'r':
+	if (strEQ(name, "realtype"))
 #ifdef REAL_TYPE
 	    return REAL_TYPE;
 #else
 	    goto not_there;
 #endif
-	break;
-    case 'S':
-	break;
-    case 'T':
-	break;
-    case 'U':
-	break;
-    case 'V':
-	break;
-    case 'W':
-	break;
-    case 'X':
-	break;
-    case 'Y':
-	break;
-    case 'Z':
 	break;
     }
     errno = EINVAL;
@@ -230,7 +188,7 @@ fetchinternal(handle, key)
       RETVAL = newSVpv("NOIDEA",6);
     break;
   case 'I':
-    if (strEQ(key, "IS_NOT_NULL")){
+    if (strEQ(key, "ISNOTNULL")){
       iniAV;
       msqlFieldSeek(result,0);
       numfields = msqlNumFields(result);
@@ -241,7 +199,7 @@ fetchinternal(handle, key)
       }
       RETVAL = newRV((SV*)av);
     }
-    if (strEQ(key, "IS_PRI_KEY")) {
+    if (strEQ(key, "ISPRIKEY")) {
       iniAV;
       msqlFieldSeek(result,0);
       numfields = msqlNumFields(result);
@@ -322,7 +280,7 @@ fetchinternal(handle, key)
 
 
 void
-msqlFetchRow(handle)
+msqlfetchrow(handle)
    Msql::Statement	handle
    PROTOTYPE: $
    PPCODE:
@@ -358,7 +316,40 @@ msqlFetchRow(handle)
 }
 
 void
-msqlDataSeek(handle,pos)
+msqlfetchhash(handle)
+   Msql::Statement	handle
+   PROTOTYPE: $
+   PPCODE:
+{
+
+  dFETCH;
+  int		placeholder = 1;
+
+  /* msqlfetchhash */
+  readRESULT;
+  if (result && (cur = msqlFetchRow(result))) {
+    off = 0;
+    msqlFieldSeek(result,0);
+    if ( msqlNumFields(result) > 0 )
+      placeholder = msqlNumFields(result);
+    EXTEND(sp,placeholder*2);
+    while(off < placeholder){
+      curField = msqlFetchField(result);
+
+      PUSHs(sv_2mortal((SV*)newSVpv(curField->name,strlen(curField->name))));
+      if (cur[off]){
+	PUSHs(sv_2mortal((SV*)newSVpv(cur[off], strlen(cur[off]))));
+      }else{
+	PUSHs(&sv_undef);
+      }
+
+      off++;
+    }
+  }
+}
+
+void
+msqldataseek(handle,pos)
    Msql::Statement	handle
    int			pos
    PROTOTYPE: $$
@@ -414,7 +405,7 @@ constant(name,arg)
 
 
 void
-msqlConnect(package = "Msql",host=NULL,db=NULL)
+msqlconnect(package = "Msql",host=NULL,db=NULL)
      char *		package
      char *		host
      char *		db
@@ -487,7 +478,7 @@ RETVAL
 
 
 void
-msqlQuery(handle, query)
+msqlquery(handle, query)
    Msql		handle
      char *	query
    PROTOTYPE: $$
@@ -537,7 +528,7 @@ msqlQuery(handle, query)
 }
 
 void
-msqlListDBs(handle)
+msqllistdbs(handle)
    Msql		handle
    PROTOTYPE: $
    PPCODE:
@@ -562,7 +553,7 @@ msqlListDBs(handle)
 }
 
 void
-msqlListTables(handle)
+msqllisttables(handle)
    Msql		handle
    PROTOTYPE: $
    PPCODE:
@@ -587,7 +578,7 @@ msqlListTables(handle)
 }
 
 void
-msqlListFields(handle, table)
+msqllistfields(handle, table)
    Msql			handle
    char *		table
    PROTOTYPE: $$

@@ -11,81 +11,161 @@ open OUT,">$file" or die "Can't create $file: $!";
 
 print "Extracting $file (with variable substitutions)\n";
 
+
+
+#
+# Start of pmsql
+#
+
 print OUT <<"!GROK!THIS!";
 $Config{'startperl'}
 !GROK!THIS!
 print OUT <<'!NO!SUBS!';
 
-require 5.002;
-#use strict;
-use Msql;
+# $Id: pmsql.PL,v 1.21 1996/06/01 19:53:37 k Exp $
+my $version = substr q$Revision: 1.21 $, 10;
+
+BEGIN {require 5.002;}
+# use strict;      # only for testing. Unfriendly for the user-eval()s
+# $^W = 1;         # too early for readline 0.8
+use Msql ();
 use Term::ReadLine;
 use Carp ();
 
-$SIG{'__WARN__'} = sub { warn Carp::longmess(@_); };
+# term
 
-my(%bottom,@typelabel);
-my $opt_h = "";
-sub Usage () {"Usage: $0 [-h host] database";}
+my $term = new Term::ReadLine 'MsqlPerl Monitor';
 
+# prompt
+
+my $prompt = "pmsql> ";
+$readline::rl_completion_function = 'main::complete';
+
+$^W = 1;
+# $SIG{'__WARN__'} = sub { warn Carp::longmess(@_); };
+
+# typelabels
+
+my(@typelabel);
+@typelabel[Msql::CHAR_TYPE(),Msql::INT_TYPE(),Msql::REAL_TYPE()] = qw(char int real);
+
+# host
+
+my $host = "";
 if (@ARGV && $ARGV[0] eq "-h") {
     shift;
-    $opt_h = shift or die Usage;
+    $host = shift or die usage();
 }
 
-my @path = split ":", $ENV{PATH}; # sorry, UNIX only
-my $Less = $ENV{PMSQL_PAGER} || $ENV{PAGER} || find_exe("less",[@path]) || 
-                find_exe("more",[@path]) || "";
+# Less
 
-sub find_exe {
-    my($exe,$path) = @_;
-    my($dir);
-    for $dir (@$path) {
-        my $abs = "$dir/$exe";
-        if (-x $abs) {
-            return $abs;
-        }
+my $Less;
+{
+    my @path = split ":", $ENV{PATH};
+    $Less = $ENV{PMSQL_PAGER} || $ENV{PAGER} || find_exe("less",[@path]) || 
+                find_exe("more",[@path]) || "";
+}
+
+# database
+
+my $database = $ARGV[0];
+
+{
+    my $rl_avail = defined &Term::ReadLine::Perl::readline ? "enabled" : "available (get Term::ReadKey and Term::ReadLine::Perl)";
+
+    print qq{
+pmsql -- interactive mSQL monitor version $version
+Readline support $rl_avail
+
+};
+}
+
+while ( defined ($_ = $term->readline($prompt)) ) {
+
+    #
+    # Let them eval a piece of perl
+    #
+
+    if (/^\!/) {
+	$term->addhistory($_) if /\S/;
+	s/^\!//;
+	eval($_);
+	warn $@ if $@;
+	print "\n";
+	next;
+
+    #
+    # Give some advice
+    #
+
+    } elsif (/^\?/) {
+	print qq{
+ho[st] <host>                            Set default host (current is "$host")
+da[tabase] <database>                    Set default database (current is "$database")
+re[lshow] [-h host] [database] [table]   describe databases or tables and
+                                                  set default host and database
+! <anything>                             eval string in perl
+?                                        print this message
+q[uit]                                   leave pmsql
+<anything else>                          query default database on default host
+
+};
+	next;
+    }
+
+    #
+    # Look closer what they said
+    #
+
+    my($command,@arg) = /^\s*(\w+)\s*(\w*)\s*(\w*)/;
+    next unless defined $command;
+
+    if ($command =~ /^ho(s(t)?)?$/i) {
+
+	# HOST
+
+	$host = $arg[0];
+	print qq{Host set to "$host"\n};
+    } elsif ($command =~ /^da(t(a(b(a(s(e)?)?)?)?)?)?$/i) {
+
+	# DATABASE
+
+	$database = $arg[0] if $arg[0] gt "";
+	print qq{Database set to "$database"\n};
+    } elsif ($command =~ /^re(l(s(h(o(w)?)?)?)?)?$/i) {
+
+	# RELSHOW
+
+	print relshow(@arg);
+    } elsif ($command =~ /^q(u(i(t)?)?)?$/i) {
+
+	# QUIT
+
+	print "Goodbye\n";
+	last;
+    } else {
+
+	# This is a query
+
+	s/\\[qgp]$//;
+	my $Db = Msql->Connect($host,$database) or next;
+	$::Q = $Db->Query($_) or next;
+	print "Query ok\n";
+	if (ref $::Q) {
+	    if ($Less) {
+		open OUT, "| $Less";
+	    } else {
+		open OUT, ">&STDOUT";
+	    }
+	    print OUT $::Q->as_string;
+	    close OUT;
+	}
     }
 }
 
-format dbs_top =
-  +-----------------+
-  |    Databases    |
-  +-----------------+
-.
-format dbs =
-  | @<<<<<<<<<<<<<< |
-    $::elem
-.
-$bottom{dbs} = "  +-----------------+";
-
-format tbl_top =
-  +---------------------+
-  |       Table         |
-  +---------------------+
-.
-format tbl =
-  | @<<<<<<<<<<<<<<<<<  |
-    $::elem
-.
-$bottom{tbl} = "  +---------------------+";
-
-format fld_top =
- +-----------------+--------+--------+----------+-----+
- |     Field       |  Type  | Length | Not Null | Key |
- +-----------------+--------+--------+----------+-----+
-.
-format fld =
- | @<<<<<<<<<<<<<  | @||||| | @>>>>> |     @|   |  @| |
-   @::row
-.
-$bottom{fld} = " +-----------------+--------+--------+----------+-----+";
-
-@typelabel[Msql::CHAR_TYPE(),Msql::INT_TYPE(),Msql::REAL_TYPE()] = qw(char int real);
-$= = 1e9; # must be integer!
+exit;
 
 package Msql::Statement;
-use vars qw(@row);
 
 sub as_string {
     my($sth) = @_;
@@ -108,6 +188,7 @@ sub as_string {
     print $@ if $@;
     $result = "$plusline\n$titline\n$plusline\n";
     $sth->DataSeek(0);
+    my(@row);
     while (@row = map {defined $_ ? $_ : "NULL"} $sth->FetchRow) {
 	$result .= sprintf $sprintf, @row;
     }
@@ -117,137 +198,149 @@ sub as_string {
     return $result;
 }
 
+
 package main;
-my $term = new Term::ReadLine 'MsqlPerl Monitor';
-my $prompt = "Enter Query> ";
-my $database = $ARGV[0];
-$^W = 1;
-my $version = substr(q$Revision: 1.15 $, 10);
-my $rl_avail = defined &Term::ReadLine::Perl::readline ? "enabled" : "available (get Term::ReadKey and Term::ReadLine::Perl)";
-print <<END;
 
-pmsql -- interactive mSQL monitor version $version
-Readline support $rl_avail
+sub complete {
+    my($word,$line,$pos) = @_;
+    $word ||= "";
+    $line ||= "";
+    $pos ||= 0;
+    #print STDERR join " ** ", ("|",$word,$line,$pos,"|");
+    $line =~ s/^\s*//;
+    return
+	$pos == 0 ? grep /^$word/i, ('!','?','create table','database','delete from','drop table','host','insert into','quit','relshow','select','update') :
+	$line =~ /^[\!\?qch]/i ? () :
+	$line =~ /^da/i ? complete_database($word) :
+	$line =~ /^de/i ? complete_table_or_field($word,$line) :
+	$line =~ /^dr/i ? complete_table($word) :
+	$line =~ /^in/i ? complete_table_or_field($word,$line) :
+	$line =~ /^re/i ? complete_table_or_field($word,$line) :
+	$line =~ /^se/i ? complete_table_or_field($word,$line) :
+	$line =~ /^up/i ? complete_table_or_field($word,$line) : ();
+}
 
-END
-while ( defined ($_ = $term->readline($prompt)) ) {
-    if (/^\!/) {
-	$term->addhistory($_) if /\S/;
-	s/^\!//;
-	eval($_);
-	warn $@ if $@;
-	print "\n";
-	next;
-    } elsif (/^\?/) {
-	print qq{
-ho[st] <host>                            Set default host (current is "$opt_h")
-da[tabase] <database>                    Set default database (current is "$database")
-re[lshow] [-h host] [database] [table]   describe databases or tables and
-                                                  set default host and database
-! <anything>                             eval string in perl
-?                                        print this message
-q[uit]                                   leave pmsql
-<anything else>                          query the default database on default host
+sub complete_database {
+    my($word) = shift;
+    grep /^\Q$word/, Msql->connect($host)->listdbs;
+}
 
-};
-	next;
+sub complete_table {
+    my($word,$line) = @_;
+    my($db) = $line =~ /^r\w+\s+(\w+)/;
+    #print STDERR "line [$line] db [$db]";
+    $db ||= $database;
+    return () unless $db;
+    grep /^\Q$word/, Msql->connect($host, $db)->listtables;
+}
+
+sub complete_table_or_field {
+    my($word,$line) = @_;
+    return complete_database($word) if $line =~ /^r\w+\s+\Q$word\E$/;
+    return complete_table($word,$line) if 
+	$line =~ /^[ds].*\sfrom\s+\Q$word\E$/ ||	# delete, select
+	$line =~ /^u\w+\s+\Q$word\E$/ || # update
+	$line =~ /^r\w+\s+\w+\s+\Q$word\E$/ || # relshow
+	$line =~ /^i.*\sinto\s+\Q$word\E$/ # insert
+	    ;
+    return () unless $database;
+    my ($table) = $1 if
+	$line =~ /^[ds].*\sfrom\s+(\w+)/ ||	# delete, select
+	$line =~ /^u\w+\s+(\w+)/ || # update
+	$line =~ /^r\w+\s+\w+\s+(\w+)/ || # relshow
+	$line =~ /^i.*\sinto\s+(\w+)/ # insert
+	;
+    my(@table) = $table ? ($table) : Msql->connect($host, $database)->listtables;
+    my($db,%fields,@fields) = Msql->connect($host, $database);
+    for $table (@table) {
+	@fields = $db->listfields($table)->name;
+	@fields{@fields} = (1) x @fields;
     }
+    return sort grep /^\Q$word/, keys %fields;
+}
 
-    my($command,@arg) = /^\s*(\w+)\s*(\w*)\s*(\w*)/;
-    next unless defined $command;
-
-    if ($command =~ /^ho(s(t)?)?$/i) {
-	$opt_h = $arg[0];
-	print qq{Host set to "$opt_h"\n};
-    } elsif ($command =~ /^da(t(a(b(a(s(e)?)?)?)?)?)?$/i) {
-	$database = $arg[0] if $arg[0] gt "";
-	print qq{Database set to "$database"\n};
-    } elsif ($command =~ /^re(l(s(h(o(w)?)?)?)?)?$/i) {
-	relshow(@arg);
-    } elsif ($command =~ /^q(u(i(t)?)?)?$/i) {
-	print "Goodbye\n";
-	last;
-    } else {
-	s/\\[qgp]$//;
-	my $Db = Msql->Connect($opt_h,$database) or next;
-	$::Q = $Db->Query($_) or next;
-	print "Query ok\n";
-	if (ref $::Q) {
-	    if ($Less) {
-		open OUT, "| $Less";
-	    } else {
-		open OUT, ">&STDOUT";
-	    }
-	    print OUT $::Q->as_string;
-	    close OUT;
-	}
+sub find_exe {
+    my($exe,$path) = @_;
+    my($dir);
+    for $dir (@$path) {
+        my $abs = "$dir/$exe";
+        if (-x $abs) {
+            return $abs;
+        }
     }
 }
 
 sub relshow {
-    $- = 0;
     if (@_ && $_[0] eq "-h") {
 	shift @_;
-	$opt_h = shift @_ or die Usage;
+	$host = shift @_ or die usage();
     }
 
     if (@_ > 2){
-	print "Usage: relshow [-h host] [database] [table]\n";
-	return;
+	return "Usage: relshow [-h host] [database] [table]\n";
     }
 
-    print "Host = $opt_h\n" if $opt_h;
-    my $Dbh = Msql->Connect($opt_h) or return;
+    my @m;
+
+    push @m, "Host = $host\n" if $host;
+    my $Dbh = Msql->Connect($host) or return;
 
     my($table,$bottok,$sorry,$i);
 
     if ($_[0]) {
 	$database = shift @_;
-	unless ( $Dbh->SelectDB($database) ) {
-	    print "Couldn't connect to $database\n";
-	    return;
-	}
-	print "\nDatabase = $database\n";
+	return "Couldn't connect to $database\n" unless $Dbh->SelectDB($database);
+	push @m, "\nDatabase = $database\n";
 	if ($table = shift @_) {
-	    grep /^\Q$table\E$/, $Dbh->ListTables or print qq{Table "$table" not found\n} and return;
-	    my $sth = $Dbh->ListFields($table) or return;
-	    print "Table = $table\n";
-	    ($~,$^) = ("fld","fld_top");
+	    grep /^\Q$table\E$/, $Dbh->ListTables or return join "", @m, qq{Table "$table" not found\n};
+	    my $sth = $Dbh->ListFields($table) or return join "", @m, qq{Error reading listfields($table)\n};
+	    my $border = " +-----------------+--------+--------+----------+-----+\n";
+	    push @m, qq{Table = $table
+$border |     Field       |  Type  | Length | Not Null | Key |\n$border};
 	    my $max = $sth->numfields;
 	    for ($i=0;$i<$max;$i++){
-		@::row = (
-			$sth->name->[$i], 
+		push @m, sprintf " | %-14s  | %-6s | %6s |     %-2s   |  %-2s |\n",
+			$sth->name->[$i],
 			$typelabel[$sth->type->[$i]] || "unknown",
 			$sth->length->[$i],
 			$sth->is_not_null->[$i] ? "Y" : "N",
-			$sth->is_pri_key->[$i] ? "Y" : "N"
-		       );
-		write;
-		$bottok||=1;
+			$sth->is_pri_key->[$i] ? "Y" : "N";
 	    }
+	    push @m, "$border\n";
 	} else {
-	    ($~,$^) = ("tbl","tbl_top");
-	    $sorry = "No tables in database";
-	    for $::elem ($Dbh->ListTables) {
-		write;
-		$bottok||=1;
+	    my @l = $Dbh->ListTables;
+	    if (@l) {
+		my $border = "  +---------------------+\n";
+		push @m, qq{
+$border  |       Table         |\n$border};
+		my $elem;
+		for $elem (@l) {
+		    push @m, sprintf "  | %-19s |\n", $elem;
+		}
+		push @m, "$border\n";
+	    } else {
+		push @m, "No tables in database\n";
 	    }
 	}
     } else {
-	($~,$^) = ("dbs","dbs_top");
-	$sorry = "No databases found";
-	for $::elem ($Dbh->ListDBs) {
-	    write;
-	    $bottok||=1;
+	my @l = $Dbh->ListDBs;
+	if (@l) {
+	    my $border = "  +------------------+\n";
+	    push @m, qq{
+$border  |    Databases     |\n$border} ;
+	    my $elem;
+	    for $elem (@l) {
+		push @m, sprintf "  | %-16s |\n", $elem;
+	    }
+	    push @m, "$border\n";
+	} else {
+	    push @m, "No databases found\n";
 	}
     }
-    if ($bottok){
-	print "$bottom{$~}\n";
-    } else {
-	print "$sorry\n";
-    }
+    return join "", @m;
 }
 
+sub usage () {"Usage: $0 [-h host] database";}
 
 __END__
 
@@ -270,7 +363,7 @@ pager. Additionally you may switch between hosts and databases within
 one session and you don't have to type the nasty C<\g> (a trailing
 C<\g>, C<\q>, and C<\p> will be ignored).
 
-If a command starts with one of the following reserved words, it is
+If a command starts with one of the following reserved words, it's
 treated specially, otherwise it is passed on verbatim to the mSQL
 daemon. Output from the daemon is piped to your pager specified by
 either the PMSQL_PAGER or the PAGER environment variable. If both are
@@ -314,7 +407,18 @@ The global variable C<$Q> is used for the statement handle of the
 current query. You can use this variable in eval statements.
 
 There's no global variable for the database connection, because we
-connect for each command separately to the database.
+connect to the database for each command separately.
+
+=head1 Completion
+
+pmsql comes with some basic completion definitions that are far from
+being perfect. Completion means, you can use the TAB character to run
+some lookup routines on the current host or database and use the
+results to save a few keystrokes.
+
+The completion mechanism is very basic, and I'm not intending to
+refine it in the near future. Feel free to implement your own and let
+me know, if you have something better than what we have here.
 
 =head1 SEE ALSO
 
@@ -330,5 +434,9 @@ See Msql, Term::ReadKey, Term::ReadLine.
 
 !NO!SUBS!
 
-close OUT or die "Can't close $file: $!";
-chmod 0755, $file or die "Can't reset permissions for $file: $!\n";
+#
+# End of pmsql
+#
+
+close OUT or die "Can't close $file: $!"; chmod 0755, $file or die
+"Can't reset permissions for $file: $!\n";
