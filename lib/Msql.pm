@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.09";
-# $Revision: 1.94 $$Date: 1996/07/02 08:25:52 $$RCSfile: Msql.pm,v $
+$VERSION = "1.10";
+# $Revision: 1.96 $$Date: 1996/07/20 02:40:07 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -13,6 +13,8 @@ require AutoLoader;
 require DynaLoader;
 require Exporter;
 @ISA = ('Exporter', 'AutoLoader', 'DynaLoader');
+
+# @EXPORT is a relict from old times...
 @EXPORT = qw(
         CHAR_TYPE
         INT_TYPE
@@ -38,6 +40,14 @@ sub host     { return shift->{'HOST'} }
 sub sock     { return shift->{'SOCK'} }
 sub database { return shift->{'DATABASE'} }
 
+sub quote	{
+    my $self = shift;
+    my $str = shift;
+    $str =~ s/\\/\\\\/g;
+    $str =~ s/\'/\\\'/g;
+    "'$str'";
+}
+
 sub AUTOLOAD {
     my $meth = $AUTOLOAD;
     $meth =~ s/^Msql:://;
@@ -62,8 +72,6 @@ Msql - Perl interface to the mSQL database
 
 =head1 SYNOPSIS
 
-	
-
   use Msql;
 	
   $dbh = Msql->connect;
@@ -72,16 +80,21 @@ Msql - Perl interface to the mSQL database
 	
   $dbh->selectdb($database);
 	
-  $sth = $dbh->listfields($table);
-  $sth = $dbh->query($sql_statement);
-	
   @arr = $dbh->listdbs;
   @arr = $dbh->listtables;
+	
+  $quoted_string = $dbh->quote($unquoted_string);
+  $error_message = $dbh->errmsg;
+
+  $sth = $dbh->listfields($table);
+  $sth = $dbh->query($sql_statement);
 	
   @arr = $sth->fetchrow;
   %hash = $sth->fetchhash;
 	
   $sth->dataseek($row_number);
+
+  $sth->as_string;
 
 =head1 DESCRIPTION
 
@@ -168,6 +181,24 @@ close the connection, choose to do one of the following:
 
 =back
 
+=head2 Error messages
+
+A static method in the Msql class is ->errmsg(), which returns the
+current value of the msqlErrMsg variable that is provided by the C
+API. There's also a global variable $Msql::db_errstr, which always
+holds the last error message. The former is reset with the next
+executed command, the latter not.
+
+=head2 ->quote($str)
+
+returns the argument enclosed in single ticks ('') with any special
+character escaped according to the needs of the API. Currently this
+means, any single tick within the string is escaped with a backslash
+and backslashes are doubled. Currently (as of msql-1.0.16) the API
+does not allow to insert binary nulls into tables. The quote method
+does not fix this deficiency, so use it at your own risk for binary
+nulls.
+
 =head2 Metadata
 
 Now lets reconsider the above methods with regard to metadata.
@@ -243,6 +274,73 @@ time in your program with the command
 Any subsequent connect() will establish a connection to the specified
 port.
 
+For connect()s to the UNIX socket of the local machine use
+MSQL_UNIX_PORT instead.
+
+=head2 Displaying whole tables in one go
+
+A handy method to show the complete contents of a statement handle is
+the as_string method. This works similar to the msql monitor with a
+few exceptions:
+
+=over 2
+
+=item the width of a column
+
+is calculated by examining the width of all entries in that column
+
+=item control characters
+
+are mapped into their backslashed octal representation
+
+=item backslashes
+
+are doubled (C<\\ instead of \>)
+
+=item numeric values
+
+are adjusted right (both integer and floating point values)
+
+=back
+
+The differences are illustrated by the following table:
+
+Input to msql (a real carriage return here replaced with ^M):
+
+    CREATE TABLE demo (
+      first_field CHAR(10),
+      second_field INT
+    ) \g
+
+    INSERT INTO demo VALUES ('new
+    line',2)\g
+    INSERT INTO demo VALUES ('back\\slash',1)\g
+    INSERT INTO demo VALUES ('cr^Mcrnl
+    nl',3)\g
+
+Output of msql:
+
+     +-------------+--------------+
+     | first_field | second_field |
+     +-------------+--------------+
+     | new
+    line    | 2            |
+     | back\slash  | 1            |
+    crnlr
+    nl  | 3            |
+     +-------------+--------------+
+
+Output of pmsql:
+
+    +----------------+------------+
+    |first_field     |second_field|
+    +----------------+------------+
+    |new\012line     |           2|
+    |back\\slash     |           1|
+    |cr\015crnl\012nl|           3|
+    +----------------+------------+
+
+
 =head2 Version information
 
 The version of MsqlPerl is always stored in $Msql::VERSION as it is
@@ -262,17 +360,17 @@ msqladmin does.
 =head2 The C<-w> switch
 
 With Msql the C<-w> switch is your friend! If you call your perl
-program with the C<-w> switch you get the warnings that normally are
-stored in $Msql::db_errstr on STDERR. This is a handy method to get
-the error messages from the msql server without coding it into your
-program. If you want to know in greater detail what's going on, set
-the environment variables that are described in David's
-manual. David's debugging aid is excellent, there's nothing to be
-added.
+program with the C<-w> switch you get the warnings from ->errmsg on
+STDERR. This is a handy method to get the error messages from the msql
+server without coding it into your program.
+
+If you want to know in greater detail what's going on, set the
+environment variables that are described in David's manual. David's
+debugging aid is excellent, there's nothing to be added.
 
 If you want to use the C<-w> switch but do not want to see the error
 messages from the msql daemon, you can set the variable $Msql::QUIET
-to some true value, and they will be suppressed.
+to some true value, and they will be supressed.
 
 =head2 StudlyCaps
 
@@ -292,11 +390,8 @@ work.
 
 =head1 PREREQUISITES
 
-mSQL is a libmsql.a library written by David Hughes
-L<URL: mailto:bambi@Bond.edu.au>.  You get that at 
-L<URL: ftp://Bond.edu.au/pub/Minerva/msql>.
-
-To use the adaptor you definitely have to install this library first.
+mSQL is a database server and an API library written by David
+Hughes. To use the adaptor you definitely have to install these first.
 
 =head1 AUTHOR
 
@@ -306,12 +401,11 @@ andreas koenig C<koenig@franz.ww.TU-Berlin.DE>
 
 Alligator Descartes wrote a database driver for Tim Bunce's DBI. I
 recommend anybody to carefully watch the development of this module
-(L<DBI::mSQL>). Msql is a simple, stable, and fast module, and it will
+(C<DBD::mSQL>). Msql is a simple, stable, and fast module, and it will
 be supported for a long time. But it's a dead end. I expect in the
 medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development: http://www.hermetica.com/
 
 =cut
-
 

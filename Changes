@@ -1,3 +1,17 @@
+July 9, 1996
+   A few cleanups in the XS logic to reduce the code below 700 lines
+   again.
+
+   Added Msql->errmsg and Msql->quote (see man page)
+
+   Fixed display of control characters in pmsql.
+
+   Moved the ->as_string method into Msql/Statement.pm to make it
+   accessible from anywhere.
+
+   Improved test script to output query in more places in case of an
+   error.
+
 July 1, 1996
    pmsql: hostname were truncated at the first dot mostly.
 

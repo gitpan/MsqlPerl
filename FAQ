@@ -19,8 +19,8 @@
             @arr  = $sth->table;       the names of the tables of each column
             @arr  = $sth->name;        the names of the columns
             @arr  = $sth->type;        the type of each column, defined in msql.h
-                                       and accessible via &Msql::chartype,
-                                       &Msql::inttype, &Msql::realtype,
+                                       and accessible via &Msql::CHAR_TYPE,
+                                       &Msql::INT_TYPE, &Msql::REAL_TYPE,
             @arr  = $sth->isnotnull;   array of boolean
             @arr  = $sth->isprikey;    array of boolean
             @arr  = $sth->length;      array of the length of each field in bytes

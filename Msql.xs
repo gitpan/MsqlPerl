@@ -3,8 +3,6 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
-
-
 #include "msql.h"
 
 #ifndef IS_PRI_KEY
@@ -39,6 +37,17 @@ typedef HV *Msql;
   m_field *	curField;	\
   m_row		cur
 
+#define dQUERY		\
+  HV *          hv;    	       	       	     \
+  HV *          stash;			     \
+  SV *          rv;			     \
+  SV *          sv;			     \
+  char *        name = "Msql::db_errstr";    \
+  Msql__Result  result = NULL;		     \
+  SV **         svp;			     \
+  char *        package = "Msql::Statement"; \
+  int           sock;			     \
+  int           tmp = -1
 
 #define ERRMSG				\
     sv = perl_get_sv(name,TRUE);	\
@@ -48,7 +57,6 @@ typedef HV *Msql;
     }					\
     XST_mUNDEF(0);			\
     XSRETURN(1);
-
 
 #define readSOCKET				\
   if (svp = hv_fetch(handle,"SOCK",4,FALSE)){	\
@@ -89,6 +97,17 @@ typedef HV *Msql;
 #define iniHV 	hv = (HV*)sv_2mortal((SV*)newHV())
 
 #define iniAV 	av = (AV*)sv_2mortal((SV*)newAV())
+
+#define MSQLPERL_FETCH_INTERNAL(a)	\
+      iniAV;				\
+      msqlFieldSeek(result,0);		\
+      numfields = msqlNumFields(result);\
+      while (off< numfields){		\
+	curField = msqlFetchField(result);	\
+	a				\
+	off++;				\
+      }					\
+      RETVAL = newRV((SV*)av)
 
 static int
 not_here(s)
@@ -188,7 +207,6 @@ not_there:
     return 0;
 }
 
-
 MODULE = Statement	PACKAGE = Msql::Statement	PREFIX = msql
 
 PROTOTYPES: ENABLE
@@ -211,57 +229,27 @@ fetchinternal(handle, key)
   switch (*key){
   case 'I':
     if (strEQ(key, "ISNOTNULL")){
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSViv(IS_NOT_NULL(curField->flags)));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv(IS_NOT_NULL(curField->flags))););
     }
-    if (strEQ(key, "ISPRIKEY")) {
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSViv(IS_PRI_KEY(curField->flags)));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+    else if (strEQ(key, "ISPRIKEY")) {
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv(IS_PRI_KEY(curField->flags))););
     }
     break;
   case 'L':
     if (strEQ(key, "LENGTH")) {
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSViv(curField->length));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv(curField->length)););
     }
     break;
   case 'N':
     if (strEQ(key, "NAME")) {
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSVpv(curField->name,strlen(curField->name)));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSVpv(curField->name,strlen(curField->name))););
     }
-    if (strEQ(key, "NUMFIELDS"))
+    else if (strEQ(key, "NUMFIELDS")){
       RETVAL = newSViv((IV)msqlNumFields(result));
-    if (strEQ(key, "NUMROWS"))
+    }
+    else if (strEQ(key, "NUMROWS")){
       RETVAL = newSViv((IV)msqlNumRows(result));
+    }
     break;
   case 'R':
     if (strEQ(key, "RESULT"))
@@ -269,33 +257,16 @@ fetchinternal(handle, key)
     break;
   case 'T':
     if (strEQ(key, "TABLE")) {
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSVpv(curField->table,strlen(curField->table)));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSVpv(curField->table,strlen(curField->table))););
     }
-    if (strEQ(key, "TYPE")) {
-      iniAV;
-      msqlFieldSeek(result,0);
-      numfields = msqlNumFields(result);
-      while (off< numfields){
-	curField = msqlFetchField(result);
-	av_push(av,(SV*)newSViv(curField->type));
-	off++;
-      }
-      RETVAL = newRV((SV*)av);
+    else if (strEQ(key, "TYPE")) {
+	MSQLPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv(curField->type)););
     }
     break;
   }
 }
    OUTPUT:
      RETVAL
-
 
 void
 msqlfetchrow(handle)
@@ -412,8 +383,6 @@ msqlDESTROY(handle)
   }
 }
 
-
-
 MODULE = Msql		PACKAGE = Msql		PREFIX = msql
 
 double
@@ -422,13 +391,21 @@ constant(name,arg)
 	int		arg
 
 char *
+msqlerrmsg(package = "Msql")
+   PROTOTYPE:
+   CODE:
+   RETVAL = msqlErrMsg;
+   OUTPUT:
+   RETVAL
+
+char *
 msqlgethostinfo(package = "Msql")
      PROTOTYPE:
      CODE:
      RETVAL = msqlGetHostInfo();
      OUTPUT:
      RETVAL
-     
+
 char *
 msqlgetserverinfo(package = "Msql")
      PROTOTYPE:
@@ -436,7 +413,7 @@ msqlgetserverinfo(package = "Msql")
      RETVAL = msqlGetServerInfo();
      OUTPUT:
      RETVAL
-     
+
 int
 msqlgetprotoinfo(package = "Msql")
      PROTOTYPE:
@@ -444,7 +421,7 @@ msqlgetprotoinfo(package = "Msql")
      RETVAL = msqlGetProtoInfo();
      OUTPUT:
      RETVAL
-     
+
 SysRet
 msqlcreatedb(handle,db)
      Msql		handle
@@ -529,7 +506,7 @@ msqlconnect(package = "Msql",host=NULL,db=NULL)
   }
 
   if ((sock < 0) || (db && (msqlSelectDB(sock,db) < 0))) {
-    ERRMSG;  
+    ERRMSG;
   } else {
     iniHV;
     svsock = (SV*)newSViv(sock);
@@ -575,7 +552,6 @@ msqlselectdb(handle, db)
  OUTPUT:
 RETVAL
 
-
 void
 msqlquery(handle, query)
    Msql		handle
@@ -590,23 +566,10 @@ msqlquery(handle, query)
    position-pointer with DataSeek().
    */
 
-  HV *          hv;
-  HV *          stash;
-  SV *          rv;
-  SV *          sv;
-  char *        name = "Msql::db_errstr";
-  Msql__Result  result = NULL;
-  SV **         svp;
-  char *        package = "Msql::Statement";
-  int           sock;
-  int           tmp = -1;
+  dQUERY;
 
-  /* msqlFastQuery */
-  if (svp = hv_fetch(handle,"SOCK",4,FALSE)){
+  if (svp = hv_fetch(handle,"SOCK",4,FALSE))
     sock = SvIV(*svp);
-  } else {
-    croak("Could not read svp");
-  }
 
   if (sock)
     tmp = msqlQuery(sock,query);
@@ -690,23 +653,10 @@ msqllistfields(handle, table)
    NAME, TABLE, TYPE, IS_PRI_KEY, and IS_NOT_NULL. We do bless into
    msqlStatement, so DESTROY will free the query. */
 
-  HV *          hv;
-  HV *          stash;
-  SV *          rv;
-  SV *          sv;
-  char *        name = "Msql::db_errstr";
-  Msql__Result  result = NULL;
-  SV **         svp;
-  char *        package = "Msql::Statement";
-  int           sock;
-  int           tmp = -1;
+  dQUERY;
 
-  /* msqlFastListFields */
-  if (svp = hv_fetch(handle,"SOCK",4,FALSE)){
+  if (svp = hv_fetch(handle,"SOCK",4,FALSE))
     sock = SvIV(*svp);
-  } else {
-    croak("Could not read svp");
-  }
   if (sock && table)
     result = msqlListFields(sock,table);
   if (result == NULL ) {
