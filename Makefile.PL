@@ -13,6 +13,14 @@ WriteMakefile(
 	CONFIGURE  => \&initialize,
 );
 
+sub MY::postamble {
+    return qq{
+pure_all :: FAQ.html
+
+FAQ.html : FAQ
+	pod2html FAQ
+};
+}
 
 
 sub initialize {

@@ -1,3 +1,7 @@
+=head1 December 21, 1996
+
+Improved documentation about mSQL-2.
+
 =head1 September 28, 1996
 
 Fixed a completion buglet again: "select * from table where <TAB>"

@@ -486,7 +486,8 @@ if ($@ =~ /^Can\'t call method/) {
     if ($sth_listf->numrows == 0) {
 	print "ok 61\n";
     } else {
-	print "not ok 61\n";
+	my $got = $sth_listf->numrows;
+	print "not ok 61 - got [$got]\n";
     }
     if ($sth_query->numrows > 0) {
 	print "ok 62\n";

@@ -1,8 +1,44 @@
-=head1 I don't understand how you retrieve the data from a SELECT Query with Msql Perl.
+=head2 Is there a way to talk to mSQL-1 and mSQL-2 within the same program?
 
-=head2 A
+No.
 
-    Precanned reply:
+=head2 How should I install Msql, so that I can work with mSQL-1 and mSQL-2 on need?
+
+You have to store the two modules in different places and take care
+which one you want to use. You could do it with the following shell
+script:
+
+    for L in /usr/local/Minerva /usr/local/Hughes ; do
+      echo ------------------------------------
+      echo Configuring for $L
+      echo ------------------------------------
+      perl Makefile.PL INSTALLSITELIB=$L/perl INSTALLSITEARCH=$L/perl \
+	INSTALLSCRIPT=$L/bin
+      make
+      make test
+      make install
+    done
+
+From then you can talk to mSQL-1 by running
+
+    perl -I/usr/local/Minerva/perl yourprogram
+
+and you talk to mSQL-2 by running
+
+    perl -I/usr/local/Hughes/perl yourprogram
+
+Or you insert the library location in your own program with
+
+    use lib '/usr/local/Minerva/perl';
+
+After above procedure the two installed pmsql(1) programs are
+identical. You could insert such a 'use lib' statement in each of them
+to have them talk to the appropriate server. Or you call them as perl
+programs the same way as "yourprogram" above.
+
+=head2 I don't understand how you retrieve the data from a SELECT Query with Msql Perl.
+
+Precanned reply:
 
     read the README
 
@@ -12,67 +48,27 @@
 
     read the tutorial in t/msql.t
 
-    subscribe to the msqlperl mailing list by sending mail to
-    msqlperl-request@franz.ww.tu-berlin.de with "subscribe msqlperl
-    your.name@your.domain" in the body of the message. Ask the
-    question to the mailing list by writing to
-    msqlperl@franz.ww.tu-berlin.de. Wait for the answer. Keep
-    subscribed to the mailing list and answer the same question as
-    soon as somebody else asks it.
+subscribe to the msqlperl mailing list by sending mail to
+msqlperl-request@franz.ww.tu-berlin.de with "subscribe msqlperl
+your.name@your.domain" in the body of the message. Ask the question to
+the mailing list by writing to msqlperl@franz.ww.tu-berlin.de. Wait
+for the answer. Keep subscribed to the mailing list and answer the
+same question as soon as somebody else asks it.
 
-=head1 How do I get the names of the fields after a listfields?
+=head2 How do I get the names of the fields after a listfields?
 
-=head2 A
+Please, read the manpage. Type 'man Msql' and if that doesn't help,
+try 'perldoc Msql'.
 
-    From the manpage (and there's nothing to be added):
+=head2 Where can I find more documentation?
 
-          Statement Handle
+Msql.pm IS the manpage in pod format. If you're on UNIX you should be
+able to read it with 'man Msql'. On other operating systems try
+'perldoc Msql'. Also, the test script, t/msql.t might help you to sort
+things out. The most recent addition is the pmsql program which may
+also help you to learning by example.
 
-          Two constructor methods return a statement handle:
-
-            $sth = $dbh->listfields($table);
-            $sth = $dbh->query($sql_statement);
-
-          $sth knows about all metadata that are provided by the API:
-
-            $scalar = $sth->numrows;
-            $scalar = $sth->numfields;
-
-            @arr  = $sth->table;       the names of the tables of each column
-            @arr  = $sth->name;        the names of the columns
-            @arr  = $sth->type;        the type of each column, defined in msql.h
-                                       and accessible via &Msql::CHAR_TYPE,
-                                       &Msql::INT_TYPE, &Msql::REAL_TYPE,
-            @arr  = $sth->isnotnull;   array of boolean
-            @arr  = $sth->isprikey;    array of boolean
-            @arr  = $sth->length;      array of the length of each field in bytes
-
-
-
-          The six last methods return an array in array context and an
-          array reference (see the perlref manpage for details) when
-          called in a scalar context. The scalar context is useful, if
-          you need only the name of one column, e.g.
-
-              $name_of_third_column = $sth->name->[2]
-
-          which is equivalent to
-
-              @all_column_names = $sth->name;
-              $name_of_third_column = $all_column_names[2];
-
-
-=head1 Where can I find more documentation?
-
-     Msql.pm IS the manpage in pod format. If you're on UNIX you should be
-     able to read it with 'man Msql'. On other operating systems try
-     'perldoc Msql'. Also, the test script, t/msql.t might help you to sort
-     things out. The most recent addition is the pmsql program which may
-     also help you to learning by example.
-
-=head1 HPUX compilation goes wrong!!!
-
-=head2 A
+=head2 HPUX compilation goes wrong!!!
 
      From: Yiorgos Adamopoulos <Y.Adamopoulos@noc.ntua.gr>
 
@@ -80,9 +76,7 @@
      msql-1.0.14 and gcc-2.7.2.  I added CC_ONLY = -fPIC to site.mm after running
      setup.
 
-=head1 How do I retrieve fields by name?
-
-=head2 A
+=head2 How do I retrieve fields by name?
 
 The internal fetchhash routine is quite good. If you need speed, you
 should hardcode your column names into a hash slice. Everything else
@@ -157,9 +151,7 @@ is a terrible waste.
      });
 
 
-=head1 Dynamic Loading
-
-=head2 Q
+=head2 Dynamic Loading
 
 Hello I am running XXX and would really like to use Msqlperl but I am
 getting this error message.
@@ -170,9 +162,7 @@ getting this error message.
   at /usr/lib/perl5/site_perl/Msql.pm line 56
  BEGIN failed--compilation aborted at ./sql.pl line 5.
 
-=head2 A
-
-There is a manpage dedicated to building and installing modules: man
+There is a manpage dedicated to building and installing modules:
 ExtUtils::MakeMaker. The long answer is in there. The short answer is:
 run 'make perl' in the MsqlPerl build directory. The third answer is,
 get an operating system that supports dynamic loading. With Linux it's
@@ -181,7 +171,7 @@ other OSs. Check out the newgroups for your OS and consult the FAQs
 there.
 
 
-=head1 How can I construct an insert statement from an array?
+=head2 How can I construct an insert statement from an array?
 
 The icc routine below should do what you want. It's hardly tested and
 I'm reluctant to add it to the distribution. But feel free to convince

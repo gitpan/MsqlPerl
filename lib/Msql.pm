@@ -1,10 +1,11 @@
 package Msql;
+BEGIN { require 5.003 }
 use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.12";
-# $Revision: 1.98 $$Date: 1996/12/16 18:27:44 $$RCSfile: Msql.pm,v $
+$VERSION = "1.14";
+# $Revision: 1.100 $$Date: 1996/12/21 12:28:53 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -59,8 +60,10 @@ sub AUTOLOAD {
 	      *$meth = \&{$meth};
 	      return &$meth(@_);
 	  } elsif ($meth =~ s/(.*)type$/uc($1)."_TYPE"/e) {
-	      # Try to determine the type that was requested by translating inttype to INT_TYPE
-	      # Not that I consider it good style to write inttype, but we once allowed it, so...
+	      # Try to determine the type that was requested by
+	      # translating inttype to INT_TYPE Not that I consider it
+	      # good style to write inttype, but we once allowed it,
+	      # so...
 	      redo TRY;
 	  }
       }
@@ -101,6 +104,9 @@ Msql - Perl interface to the mSQL database
   $sth->dataseek($row_number);
 
   $sth->as_string;
+
+  @indices = $sth->listindices;               # only in mSQL 2.0
+  @arr = $dbh->listindex($table,$index);      # only in mSQL 2.0
 
 =head1 DESCRIPTION
 
@@ -191,13 +197,28 @@ close the connection, choose to do one of the following:
 
 =head2 Error messages
 
-A static method in the Msql class is ->errmsg(), which returns the
+A static method in the Msql class is -E<gt>errmsg(), which returns the
 current value of the msqlErrMsg variable that is provided by the C
 API. There's also a global variable $Msql::db_errstr, which always
 holds the last error message. The former is reset with the next
 executed command, the latter not.
 
-=head2 ->quote($str)
+=head2 The C<-w> switch
+
+With Msql the C<-w> switch is your friend! If you call your perl
+program with the C<-w> switch you get the warnings from -E<gt>errmsg on
+STDERR. This is a handy method to get the error messages from the msql
+server without coding it into your program.
+
+If you want to know in greater detail what's going on, set the
+environment variables that are described in David's manual. David's
+debugging aid is excellent, there's nothing to be added.
+
+If you want to use the C<-w> switch but do not want to see the error
+messages from the msql daemon, you can set the variable $Msql::QUIET
+to some true value, and they will be supressed.
+
+=head2 -E<gt>quote($str)
 
 returns the argument enclosed in single ticks ('') with any special
 character escaped according to the needs of the API. Currently this
@@ -261,6 +282,38 @@ which is equivalent to
 
     @all_column_names = $sth->name;
     $name_of_third_column = $all_column_names[2];
+
+=head2 New in mSQL 2.0
+
+The query() function in the API returns the number of rows affected by
+a query. To cite the mSQL API manual, this means...
+
+  If the return code is greater than 0, not only does it imply
+  success, it also indicates the number of rows "touched" by the query
+  (i.e. the number of rows returned by a SELECT, the number of rows
+  modified by an update, or the number of rows removed by a delete).
+
+As we are returning a statement handle on selects, we can easily check
+the number of rows returned. For non-selects we behave just the same
+as mSQL-2.
+
+To find all indices associated with a table you can call the
+C<listindices()> method on a statement handle. To find out the columns
+included in an index, you can call the C<listindex($table,$index)>
+method on a database handle.
+
+There are a few new column types in mSQL 2. Access their numeric value
+with the functions Msql::IDENT_TYPE, Msql::IDX_TYPE, and
+Msql::TEXT_TYPE.
+
+You cannot talk to a 1.0 server with a 2.0 client.
+
+You cannot link to a 1.0 library I<and> to a 2.0 library I<at the same
+time>. So you may want to build two different Msql modules at a time,
+one for 1.0, another for 2.0, and load whichever you need. Check out
+what the C<-I> switch in perl is for.
+
+Everything else seems to remain backwards compatible.
 
 =head2 @EXPORT
 
@@ -352,33 +405,21 @@ Output of pmsql:
 =head2 Version information
 
 The version of MsqlPerl is always stored in $Msql::VERSION as it is
-perl standard. The mSQL API implements methods to access some internal
-configuration parameters: gethostinfo, getserverinfo, and
-getprotoinfo.  All three are available via a database handle, but are
-not associated with the database handle. All three return global
-variables that reflect the B<last> connect() command within the
-current program.
+perl standard.
+
+The mSQL API implements methods to access some internal configuration
+parameters: gethostinfo, getserverinfo, and getprotoinfo.  All three
+are available both as class methods or via a database handle. But
+under no circumstances they are associated with a database handle. All
+three return global variables that reflect the B<last> connect()
+command within the current program. This means, that all three return
+empty strings or zero I<before> the first call to connect().
 
 =head2 Administration
 
 shutdown, creatdb, dropdb, reloadacls are all accessible via a
 database handle and implement the corresponding methods to what
 msqladmin does.
-
-=head2 The C<-w> switch
-
-With Msql the C<-w> switch is your friend! If you call your perl
-program with the C<-w> switch you get the warnings from ->errmsg on
-STDERR. This is a handy method to get the error messages from the msql
-server without coding it into your program.
-
-If you want to know in greater detail what's going on, set the
-environment variables that are described in David's manual. David's
-debugging aid is excellent, there's nothing to be added.
-
-If you want to use the C<-w> switch but do not want to see the error
-messages from the msql daemon, you can set the variable $Msql::QUIET
-to some true value, and they will be supressed.
 
 =head2 StudlyCaps
 
