@@ -1,0 +1,52 @@
+Here is the announcement for MsqlPerl 1.00 and 1.01 in one go. (As
+1.01 is just a trivial patch)
+
+a new interface
+    more intuitive, less to type, will most probably allow an
+    emulation of MsqlPerl with an underlying DBD::Msql (expect an
+    announcement for DBD::mSQL by Alligator Descates RSN). The main
+    point of the interface is, that it hides the object attributes
+    behind methods.
+
+a memory leak less
+    Thanks to Dan McGuirk <mcguirk@indirect.com>!
+
+(nearly) full backwards compatibility
+    1.00 will most probably be the last version that supports the
+    old-style interface with direct access to the object
+    attributes. Unless you speak up, of course, I will change the
+    underlying code and thusly the object structure in future
+    releases.
+
+Insert() method is gone
+    In the beginning it caused a lot of confusion. Then I realized
+    that most people used it blindly although it was warned against it
+    as VERY inefficient. Finally I realized that the jump from alpha
+    into a release is the last chance to throw it away -- and did so.
+
+support for NULL fields
+    Thanks to Dirk.vanGulik <Dirk.vanGulik@jrc.it>
+
+The variable $Msql::QUIET
+    disables error messages from the msql daemon if the -w switch is on.
+
+Get it from
+
+    ftp://franz.ww.tu-berlin.de/pub/perl/MsqlPerl-1.01.tar.gz
+or  ftp://bond.edu.au/pub/Minerva/msql/Contrib/MsqlPerl-1.01.tar.gz
+
+If you find old releases of MsqlPerl on any server, please let the
+administrator and/or me know! There are too many a1 versions still
+around, which are practically useless today.
+
+What is MsqlPerl?
+-----------------
+
+A perl5 module that implements an interface to the mSQL database
+engine by David Hughes. Visit ftp://bond.edu.au/pub/Minerva/msql for
+details.
+
+
+Enjoy,
+andreas, perlin' for berlin
+

@@ -1,0 +1,72 @@
+The code in this directory is
+
+Copyright (c) 1994,1995 Andreas Koenig <a.koenig@mind.de>
+
+and may be used, copied and redistributed under the same terms as perl 
+(see the files README, Copying and Artistic in the perl distribution).
+
+The mSQL-Perl Adaptor
+---------------------
+
+libmsql.a library written by David Hughes <bambi@Bond.edu.au> that
+implements an API between arbitrary client programs and the mSQL
+database engine. You get that library and the database engine from
+
+    ftp://Bond.edu.au/pub/Minerva/msql/msql-*.tar.gz
+
+To use the adaptor you definitely have to install the database and the
+library first.
+
+Installing The Adaptor
+----------------------
+
+Unpack in any directory on your harddisk and run
+
+    perl Makefile.PL
+    make
+    make test
+
+The latter will give you some instructions, if msqld is not running or
+if a database "test" is not available. Rest assured, that no existing
+data in this database will be overwritten.
+
+If the tests finish with `ok', give it a try to
+
+    make install
+
+If anything fails, check the documentation of the ExtUtils::MakeMaker
+module. Especially if you're facing problems with dynamic loading, set
+up the environment variable PERL_DL_DEBUG to some value greater 0 to
+get some more information from the DynaLoader.
+
+There was a report, that the installation of msql did not cover the
+installation of the libmisc.a library (seems to be relevant for NeXT
+and Ultrix users only). If `make test' fails with `Undefined symbols:
+_strdup', then you will have to install libmisc.a by hand, i.e. copy
+it into /usr/local/Minerva/lib and start again from `perl
+Makefile.PL'.
+
+Documentation
+-------------
+
+Documentation is available in pod format within the file Msql.pm. You
+can turn this file into a manpage or a html page with the pod2*
+programs that come with the perl distribution.
+
+Mailing list
+------------
+
+Announcements of new versions will be made on comp.lang.perl.announce
+and on the mailing list devoted to the maintenance of the package:
+subscribe to the list by sending mail to
+
+    msqlperl-request@franz.ww.tu-berlin.de
+
+with the word "subscribe" in the message field. It's a low-volume
+mailing list.
+
+
+...have fun,
+andreas koenig <a.koenig@mind.de>
+
+

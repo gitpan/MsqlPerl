@@ -1,0 +1,26 @@
+Subject: Where can I get converters for the pod?
+
+      >From: Kenwrick Chan <kchan@leahi.kcc.hawaii.edu>
+      >Andreas,
+      >I'm new to working in mSQL and I wanted to work with your MsqPerl 
+      >package.  Your installation instructions mention converting the 
+      >documentation into from pod format.  Is there another way to get that 
+      >info?  I don't have the info on how to convert the file format.
+
+    perl comes with a program pod2man and another one called
+    pod2html. Both reside in the pod/ subdirectory of the perl source
+    tree. The current version of perl (5.001L) installs both programs
+    by default.
+
+
+
+Subject: HPUX -- no chance?
+
+        > From: Sandro Soramae <sandro@hydra.unive.it>
+
+        > I wanna say I found the biggest problem in msql library,
+        > 'cause makefile uses gcc to compile it.
+
+        > It's necessary to compile the library with cc with +z flag
+        > option.
+

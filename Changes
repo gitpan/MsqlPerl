@@ -1,0 +1,59 @@
+July 30, 1995
+    Fixed a few documentation bugs. Reintroduced -lmisc in Makefile.PL.
+    Introduced $Msql::QUIET, a variable to suppress error messages from
+    the msql daemon when $^W is true (i.e. when the -w switch is on)
+
+July 8, 1995 
+    Implemented a new interface that uses methods to access the object
+    attributes. The resulting version is a hermaphrodite that is fully
+    backwards compatible, but also implements the new
+    interface. Future versions will not support the old interface
+    anymore. The reason for the change is a greater flexibility and
+    also greater efficiency.
+
+    Fixed a memory leak (Thanks to Dan McGuirk <mcguirk@indirect.com>
+    for the report)
+
+June 4, 1995
+    Introduced the handling of NULL fields that comes with msql 1.0.6.
+    That should be a fully backwards compatible solution.
+
+    IQuery is gone, it turned out to be of no use at all. FastQuery is
+    still there.
+
+    The Msql::Tie package has gone in a different file and is still
+    considered experimental. If you have an opinion about it, tell me,
+    if not, don't ever use this file.
+
+April 22, 1995
+    Introduced masking of single ticks (') within the Insert method. 
+
+Feb 28, 1995
+    Connect(host, db) now connects to UNIX socket when hostname is the
+    null string. Did only so, if called as Connect() followed by
+    SelectDB(db).
+
+    Added a bench/ directory with two sample benchmarks.
+
+    $sth-{HOST}, $sth->{DATABASE}, and $sth->{SOCK} depreciated (will
+    not supported in future releases). Use their $dbh equivalent
+    instead!
+
+Feb 27, 1995
+    Fetching of metadata via tie() on demand with caching for TieQuery
+    and TieListFields implemeted. Turns out to be a performance
+    PENALTY, as the benefits of tie are eaten by the tie overhead. As
+    a byproduct new methods are available: $sth->fetchinternal(KEY),
+    $dbh->FastQuery(), $dbh->IQuery(), $dbh->FastListFields(). The
+    performance gain is much smaller than expected. Will have to be
+    reevaluated with perl5.001. The new functions are only important
+    for testing purposes, esp. for the implementation of the DBI
+    switch.
+
+    Insert() now checks the field type instead of the input type when
+    it decides, if a value should be enclosed in ticks. Insert is
+    faster now, but will be much faster, I suppose, once closures are
+    available in perl.
+
+Feb 13, 1995
+    $sth->{LENGTH} added.

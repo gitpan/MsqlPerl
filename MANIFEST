@@ -1,0 +1,12 @@
+Announce			Announcement
+FAQ				Frequently Asked Questions
+Changes				History file
+MANIFEST			This file
+Makefile.PL			Makefile generator
+lib/Msql.pm			Perl Module
+lib/Msql/Statement.pm		Perl Module
+Msql.xs				XS file (see man perlapi)
+README				Please read
+t/msql.t			Test script
+t/oldmsql.t			Test script
+typemap				Typemap file (see man perlapi)
