@@ -140,6 +140,14 @@ int arg;
 	    goto not_there;
 #endif
 	break;
+    case 'D':
+	if (strEQ(name, "DATE_TYPE"))
+#ifdef DATE_TYPE
+	    return DATE_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
     case 'I':
 	if (strEQ(name, "IDENT_TYPE"))
 #ifdef IDENT_TYPE
@@ -164,6 +172,14 @@ int arg;
 	if (strEQ(name, "LAST_REAL_TYPE"))
 #ifdef LAST_REAL_TYPE
 	    return LAST_REAL_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
+    case 'M':
+	if (strEQ(name, "MONEY_TYPE"))
+#ifdef MONEY_TYPE
+	    return MONEY_TYPE;
 #else
 	    goto not_there;
 #endif
@@ -210,6 +226,20 @@ int arg;
 	if (strEQ(name, "TEXT_TYPE"))
 #ifdef TEXT_TYPE
 	    return TEXT_TYPE;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "TIME_TYPE"))
+#ifdef TIME_TYPE
+	    return TIME_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
+    case 'U':
+	if (strEQ(name, "UINT_TYPE"))
+#ifdef UINT_TYPE
+	    return UINT_TYPE;
 #else
 	    goto not_there;
 #endif
@@ -439,7 +469,7 @@ msqlgetprotoinfo(package = "Msql")
      RETVAL
 
 int
-msqlloadconfigfile(configfile)
+msqlloadconfigfile(package = "Msql",configfile)
      char * configfile
      PROTOTYPE: $
      CODE:
@@ -452,7 +482,7 @@ msqlloadconfigfile(configfile)
      RETVAL
 
 int
-msqlgetintconf(item)
+msqlgetintconf(package = "Msql",item)
      char * item
      PROTOTYPE: $
      CODE:
@@ -465,7 +495,7 @@ msqlgetintconf(item)
      RETVAL
 
 char *
-msqlgetcharconf(item)
+msqlgetcharconf(package = "Msql",item)
      char * item
      PROTOTYPE: $
      CODE:
@@ -477,6 +507,81 @@ msqlgetcharconf(item)
      OUTPUT:
      RETVAL
 
+char *
+msqlunixtimetodate(package = "Msql",clock)
+     time_t clock
+     PROTOTYPE: $$
+     CODE:
+#if defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+     RETVAL = msqlUnixTimeToDate(clock);
+#else
+     RETVAL = "";
+#endif
+     OUTPUT:
+     RETVAL
+
+char *
+msqlunixtimetotime(package = "Msql",clock)
+     time_t clock
+     PROTOTYPE: $$
+     CODE:
+#if defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+     RETVAL = msqlUnixTimeToTime(clock);
+#else
+     RETVAL = "";
+#endif
+     OUTPUT:
+     RETVAL
+
+time_t
+msqldatetounixtime(package = "Msql",clock)
+     char * clock
+     PROTOTYPE: $$
+     CODE:
+#if defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+     RETVAL = msqlDateToUnixTime(clock);
+#else
+     RETVAL = 0;
+#endif
+     OUTPUT:
+     RETVAL
+
+time_t
+msqltimetounixtime(package = "Msql",clock)
+     char * clock
+     PROTOTYPE: $$
+     CODE:
+#if defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+     RETVAL = msqlTimeToUnixTime(clock);
+#else
+     RETVAL = 0;
+#endif
+     OUTPUT:
+     RETVAL
+
+SysRet
+msqlgetserverstats(handle)
+     Msql		handle
+     PROTOTYPE: $
+     CODE:
+{
+#ifdef IDX_TYPE
+
+  /* The reason I leave this undocumented is that I can't believe that's all */
+
+  dRESULT;
+  readSOCKET;
+  if (msqlGetServerStats(sock)==0){
+    msqlClose(sock);
+  } else {
+    ERRMSG;
+  }
+#endif
+  RETVAL = 0;
+}
+OUTPUT:
+RETVAL
+  
 SysRet
 msqldropdb(handle,db)
      Msql		handle
@@ -509,7 +614,7 @@ msqlcreatedb(handle,db)
 
 SysRet
 msqlshutdown(handle)
-     Msql		handle
+     Msql	handle
      PROTOTYPE: $
      CODE:
      {
@@ -534,6 +639,32 @@ msqlreloadacls(handle)
      }
      OUTPUT:
      RETVAL
+
+SV *
+msqlgetsequenceinfo(handle,table)
+     Msql		handle
+     char *		table
+   PROTOTYPE: $$
+   PPCODE:
+{
+#ifdef IDX_TYPE
+  m_seq	*seq;
+  dFETCH;
+  readSOCKET;
+
+  if (sock){
+    seq = msqlGetSequenceInfo(sock,table);
+  }
+  if (!seq){
+    ERRMSG;
+  } else {
+    EXTEND(sp,2);
+    PUSHs(sv_2mortal((SV*)newSViv(seq->step)));
+    PUSHs(sv_2mortal((SV*)newSViv(seq->value)));
+    Safefree(seq);
+  }
+#endif
+}
 
 SV *
 msqlconnect(package = "Msql",host=NULL,db=NULL)

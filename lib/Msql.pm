@@ -1,19 +1,23 @@
 package Msql;
-BEGIN { require 5.003 }
-use vars qw($db_errstr);
+BEGIN { require 5.002 }
+# use vars qw($db_errstr); # 5.003
+$db_errstr = $db_errstr = '';
 
 require Msql::Statement;
-use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.16";
-# $Revision: 1.102 $$Date: 1997/03/20 12:05:11 $$RCSfile: Msql.pm,v $
+# use vars qw($VERSION $QUIET @ISA @EXPORT); # 5.003
+$QUIET  = $QUIET  = '';
+@ISA    = @ISA    = '';
+@EXPORT = @EXPORT = '';
+$VERSION = $VERSION = "1.17";
+
+# $Revision: 1.103 $$Date: 1997/03/22 00:00:54 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
-require Carp;
-require AutoLoader;
-require DynaLoader;
-require Exporter;
-@ISA = ('Exporter', 'AutoLoader', 'DynaLoader');
+use Carp ();
+use DynaLoader ();
+use Exporter ();
+@ISA = ('Exporter', 'DynaLoader');
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -22,21 +26,29 @@ require Exporter;
 	     REAL_TYPE
 	    );
 @EXPORT_OK = qw(
-		ANY_TYPE
 		IDENT_TYPE
-		IDX_TYPE
-		LAST_REAL_TYPE
 		NULL_TYPE
-		SYSVAR_TYPE
 		TEXT_TYPE
+		DATE_TYPE
+		UINT_TYPE
+		MONEY_TYPE
+		TIME_TYPE
+		IDX_TYPE
+		SYSVAR_TYPE
 	       );
 
-sub INT_TYPE   { constant("INT_TYPE", 0) }
-sub CHAR_TYPE  { constant("CHAR_TYPE", 0) }
-sub REAL_TYPE  { constant("REAL_TYPE", 0) }
-sub IDENT_TYPE { constant("IDENT_TYPE", 0) }
-sub IDX_TYPE   { constant("IDX_TYPE", 0) }
-sub TEXT_TYPE  { constant("TEXT_TYPE", 0) }
+sub INT_TYPE    { constant("INT_TYPE", 0) }
+sub CHAR_TYPE   { constant("CHAR_TYPE", 0) }
+sub REAL_TYPE   { constant("REAL_TYPE", 0) }
+sub IDENT_TYPE  { constant("IDENT_TYPE", 0) }
+sub NULL_TYPE   { constant("NULL_TYPE", 0) }
+sub TEXT_TYPE   { constant("TEXT_TYPE", 0) }
+sub DATE_TYPE   { constant("DATE_TYPE", 0) }
+sub UINT_TYPE   { constant("UINT_TYPE", 0) }
+sub MONEY_TYPE  { constant("MONEY_TYPE", 0) }
+sub TIME_TYPE   { constant("TIME_TYPE", 0) }
+sub IDX_TYPE    { constant("IDX_TYPE", 0) }
+sub SYSVAR_TYPE { constant("SYSVAR_TYPE", 0) }
 sub host     { return shift->{'HOST'} }
 sub sock     { return shift->{'SOCK'} }
 sub database { return shift->{'DATABASE'} }
@@ -107,8 +119,9 @@ Msql - Perl interface to the mSQL database
 
   $sth->as_string;
 
-  @indices = $sth->listindices;               # only in mSQL 2.0
-  @arr = $dbh->listindex($table,$index);      # only in mSQL 2.0
+  @indices = $sth->listindices                   # only in mSQL 2.0
+  @arr = $dbh->listindex($table,$index)          # only in mSQL 2.0
+  ($step,$value) = $dbh->getsequenceinfo($table) # only in mSQL 2.0
 
 =head1 DESCRIPTION
 
@@ -314,8 +327,9 @@ included in an index, you can call the C<listindex($table,$index)>
 method on a database handle.
 
 There are a few new column types in mSQL 2. Access their numeric value
-with the functions Msql::IDENT_TYPE, Msql::IDX_TYPE, and
-Msql::TEXT_TYPE.
+with the these functions defined in the Msql package: IDENT_TYPE,
+NULL_TYPE, TEXT_TYPE, DATE_TYPE, UINT_TYPE, MONEY_TYPE, TIME_TYPE,
+IDX_TYPE, SYSVAR_TYPE.
 
 You cannot talk to a 1.0 server with a 2.0 client.
 

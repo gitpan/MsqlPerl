@@ -1,3 +1,24 @@
+=head1 March 22, 1997
+
+Added support for new data types in 2.0B5.
+
+Made MsqlPerl again compatible with perl5.002.
+
+Added getsequenceinfo method.
+
+Added getserverstats, but left it undocumented, as I expect that this
+API is not the final word on it.
+
+Added the four date/time conversion functions. unixtimetodate,
+unixtimetotime, datetounixtime, timetounixtime. The latter two do not
+work on my machine due to strptime. So I backed them out again. They
+can be activated by running
+
+    perl Makefile.PL DEFINE=-DHAVE_STRPTIME
+
+Introduced a small detection of which server we're running under in
+pmsql.
+
 =head1 March 20, 1997
 
 Applied patch from Hugo van der Sanden E<lt>hv@iii.co.ukE<gt> to

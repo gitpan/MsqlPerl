@@ -21,8 +21,8 @@ $Config{'startperl'}
 
 print OUT <<'!NO!SUBS!';
 
-# $Id: pmsql.PL,v 1.33 1996/12/16 18:27:44 k Exp $
-my $version = substr q$Revision: 1.33 $, 10;
+# $Id: pmsql.PL,v 1.35 1997/03/21 23:59:40 k Exp $
+my $version = substr q$Revision: 1.35 $, 10;
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -45,21 +45,31 @@ $^W = 1;
 
 # typelabels
 
-my(@typelabel);
-@typelabel[
+my(%typelabel);
+@typelabel{
 	   Msql::INT_TYPE(),
 	   Msql::CHAR_TYPE(),
 	   Msql::REAL_TYPE(),
 	   Msql::IDENT_TYPE(),
 	   Msql::IDX_TYPE(),
-	   Msql::TEXT_TYPE()
-	  ] = qw(
+	   Msql::TEXT_TYPE(),
+	   Msql::DATE_TYPE(),
+	   Msql::UINT_TYPE(),
+	   Msql::MONEY_TYPE(),
+	   Msql::TIME_TYPE(),
+	   Msql::SYSVAR_TYPE(),
+	  } = qw(
 		 int
 		 char 
 		 real
 		 ident
 		 index
 		 text
+		 date
+		 uint
+		 money
+		 time
+		 sys
 		);
 
 # host
@@ -81,8 +91,8 @@ my $Less;
 
 # database
 
-my $database = $ARGV[0];
-$database ||= "";
+my $database = $ARGV[0] || "";
+
 
 #
 # Greetings
@@ -91,8 +101,16 @@ $database ||= "";
 {
     my $rl_avail = defined &Term::ReadLine::Perl::readline ? "enabled" : "available (get Term::ReadKey and Term::ReadLine::Perl)";
 
+    my $probe_server;
+    if (Msql->connect($host)) {
+	$probe_server = "mSQL " . Msql->getserverinfo . " detected";
+    } else {
+	$probe_server = "You seem to run a version of ";
+	$probe_server .= defined &Msql::IDX_TYPE ? "mSQL >= 2.0" : "mSQL < 2.0";
+    }
     print qq{
 pmsql -- interactive mSQL monitor version $version
+$probe_server
 Readline support $rl_avail
 
 };
@@ -127,7 +145,6 @@ while ( defined ($_ = $term->readline($prompt)) ) {
     #
 
     if (/^\!/) {
-	$term->addhistory($_) if /\S/;
 	s/^\!//;
 	eval($_);
 	warn $@ if $@;
@@ -353,6 +370,12 @@ sub relshow {
 		return "Too many arguments to relshow\n"
 			unless Msql->getserverinfo ge 2;
 		#warn join ":", grep //, $sth->name;
+		if ($index eq "_seq") {
+		    my(@seq) = $Dbh->getsequenceinfo($table);
+		    push @m, "Sequence Step  = $seq[0]
+Sequence Value = $seq[1]\n";
+		    return join "", @m;
+		}
 		grep(/^\Q$index\E$/, $sth->name)
 			or return join "", @m, qq{Index "$index" not found\n};
 		push @m, qq{Index      = $index\n};
@@ -390,7 +413,7 @@ sub relshow {
 		    $sth->type->[$i]==Msql::IDX_TYPE() ? "N" : "N/A";
 		push @m, sprintf " | %-".$fieldwidth."s | %-5s | %6s |    %-3s   | %-".$keywidth."s |\n",
 			$sth->name->[$i],
-			$typelabel[$sth->type->[$i]] || ("unknown-".$sth->type->[$i]),
+			$typelabel{$sth->type->[$i]} || ("unknown-".$sth->type->[$i]),
 			($sth->length->[$i] || "N/A"),
 			$sth->is_not_null->[$i] ? " Y " : $sth->type->[$i]!=Msql::IDX_TYPE() ? " N " : "N/A",
 			$sth->is_pri_key->[$i] ? "Y" : $keyNO;
