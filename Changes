@@ -1,3 +1,16 @@
+=head1 April 26, 1997
+
+Improved a test for mSQL-2 to print better diagnostics.
+
+FAQ.html not generated anymore after pod2html has been broken for
+automated use in perl5.004.
+
+=head1 April 22, 1997
+
+Fixed test 61 for the NeXT (OS 3.2) which has its own atof function
+that translates "N/A" (actually any string matching /^[INSins]/) into
+NaN silently which caused test 61 to fail.
+
 =head1 March 22, 1997
 
 Added support for new data types in 2.0B5.

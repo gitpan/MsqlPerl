@@ -1,10 +1,5 @@
 #!/usr/bin/perl -w
 
-######################### We start with some black magic to print on failure.
-
-# Change 1..1 below to 1..last_test_to_print .
-# (It may become useful if the test is moved to ./t subdirectory.)
-
 use Msql;
 BEGIN {
     $| = 1;
@@ -16,8 +11,6 @@ BEGIN {
     print "1..37\n";
 }
 END {print "not ok 1\n" unless $loaded;}
-
-######################### End of black magic.
 
 use strict;
 use vars qw($loaded);
@@ -44,10 +37,11 @@ print "ok 1\n";
 	for $j (0,1) {
 	    $q = qq{insert into $t[$j] values \('00$i',\'}.bytometer(2**$i).qq{\'\)};
 	    my $ok = 3 + $i*2 + $j;
-	    if ($db->query($q)==1) {
+	    my $ret = $db->query($q);
+	    if ($ret == 1) {
 		print "ok $ok\n";
 	    } else {
-		print "not ok $ok\n";
+		print "not ok $ok: 'insert' returned [$ret], expected 1\n";
 	    }
 	}
     }
@@ -64,7 +58,7 @@ print "ok 1\n";
 	print "not ok 34: $what\n";
     }
     $q = qq{select * from $t[0] where id like '[_]'  order by id};
-    if ($db->query($q)->numrows==0) {
+    if (($what = $db->query($q)->numrows) == 0) {
 	print "ok 35\n";
     } else {
 	print "not ok 35: $what\n";

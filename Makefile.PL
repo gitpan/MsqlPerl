@@ -1,5 +1,6 @@
 BEGIN {require 5.002;}
 use ExtUtils::MakeMaker;
+use Config;
 $Verbose++ if $ENV{USER} eq "k";
 
 WriteMakefile(
@@ -13,14 +14,13 @@ WriteMakefile(
 	      @VERSION,
 );
 
-sub MY::postamble {
-    return qq{
-pure_all :: FAQ.html
-
-FAQ.html : FAQ
-	pod2html FAQ
-};
-}
+# sub MY::postamble {
+#     my $pod2html = MY->catfile($Config{scriptdirexp},"pod2html");
+#     return qq{
+# FAQ.html : FAQ
+# 	  $pod2html FAQ > FAQ.html
+# };
+# }
 
 
 sub initialize {
@@ -36,7 +36,7 @@ sub initialize {
     }
     $gooddir ||= $msqldir[0];
     $gooddir=prompt("
-Where is your msql installed? Please name the directory that contains
+Where is your msql installed? Please tell me the directory that contains
 the subdirs lib/ and include/.",$gooddir) || $gooddir; # || for 5.002
     
     my $headerdir="$gooddir/include";

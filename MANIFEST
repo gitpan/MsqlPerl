@@ -1,5 +1,5 @@
 Changes				History file
-FAQ                             Frequently asked questions
+FAQ                             Frequently asked questions (POD format)
 MANIFEST			This file
 Makefile.PL			Makefile generator
 Msql.xs				XS file (see man perlapi)

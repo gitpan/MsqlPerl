@@ -486,7 +486,7 @@ if ($@ =~ /^Can\'t call method/) {
     # The only difference: the ListFields sth must not have a row associated with
     local($^W) = 0;
     my($got) = $sth_listf->numrows;
-    if (!defined $got or $got == 0) {
+    if ( !defined $got or $got == 0 or $got eq "N/A" ) {
 	print "ok 61\n";
     } else {
 	print "not ok 61 - got [$got]\n";
