@@ -1,6 +1,6 @@
 The code in this package is
 
-Copyright (c) 1994-1996 Andreas König <a.koenig@mind.de>
+Copyright (c) 1994-1997 Andreas König <a.koenig@mind.de>
 
 and may be used, copied and redistributed under the same terms as perl 
 (see the files README, Copying and Artistic in the perl distribution).
@@ -8,15 +8,17 @@ and may be used, copied and redistributed under the same terms as perl
 Prerequisites
 -------------
 
-libmsql.a library written by David Hughes <bambi@Bond.edu.au> that
-implements an API between arbitrary client programs and the mSQL
-database engine. You get that library and the database engine from
+mSQL is a database server and an API library written by David Hughes
+<bambi@Hughes.com.au>. You get that library and the
+database engine from
 
-    ftp://Bond.edu.au/pub/Minerva/msql/msql-*.tar.gz
+    http://Hughes.com.au
+
+Please follow the links there. Both mSQL-1 and mSQL-2 are supported
+with MsqlPerl.
 
 To use the adaptor you definitely have to install the database and the
-library first. From Version 1.04 of MsqlPerl you need perl5.002 or
-better installed.
+library first. From the perl side perl5.003 is required.
 
 What you achieve with MsqlPerl
 ------------------------------

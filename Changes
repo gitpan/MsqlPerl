@@ -1,3 +1,8 @@
+=head1 September 28, 1996
+
+Fixed a completion buglet again: "select * from table where <TAB>"
+resulted in table completion instead of field completion.
+
 =head1 September 8, 1996
 
 Fixed another completion buglet in pmsql (complete-table-or-field

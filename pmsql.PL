@@ -7,7 +7,7 @@ chdir(dirname($0));
 $file =~ s/\.pl$//
 	if ($Config{osname} eq 'VMS' or $Config{osname} eq 'os2');  # "case-forgiving"
 
-open OUT,">$file" or die "Can't create $file: $!";
+open OUT,">$file" or die "Can\'t create $file: $!";
 
 print "Extracting $file (with variable substitutions)\n";
 
@@ -18,10 +18,11 @@ print "Extracting $file (with variable substitutions)\n";
 print OUT <<"!GROK!THIS!";
 $Config{'startperl'}
 !GROK!THIS!
+
 print OUT <<'!NO!SUBS!';
 
-# $Id: pmsql.PL,v 1.31 1996/09/08 13:39:02 k Exp $
-my $version = substr q$Revision: 1.31 $, 10;
+# $Id: pmsql.PL,v 1.33 1996/12/16 18:27:44 k Exp $
+my $version = substr q$Revision: 1.33 $, 10;
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -271,10 +272,10 @@ sub complete_table_or_field {
     print STDERR "word[$word] line[$line]" if $Debug & 4;
     return complete_database($word) if $line =~ /^r\w+\s+\Q$word\E$/;
     return complete_table($word,$line) if
-	$line =~ /^[ds].*\sfrom\s+\Q$word\E/ ||	# delete, select
-	$line =~ /^u\w+\s+\Q$word\E/ || # update
-	$line =~ /^r\w+\s+\w+\s+\Q$word\E/ || # relshow
-	$line =~ /^i.*\sinto\s+\Q$word\E/ # insert
+	$line =~ /^[ds].*\sfrom\s+\Q$word\E$/ ||	# delete, select
+	$line =~ /^u\w+\s+\Q$word\E$/ || # update
+	$line =~ /^r\w+\s+\w+\s+\Q$word\E$/ || # relshow
+	$line =~ /^i.*\sinto\s+\Q$word\E$/ # insert
 	    ;
     return () unless $database;
     my ($table) = $1 if
@@ -283,7 +284,7 @@ sub complete_table_or_field {
 	$line =~ /^r\w+\s+\w+\s+(\w+)/ || # relshow
 	$line =~ /^i.*\sinto\s+(\w+)/ # insert
 	;
-    my(@table) = $table ? ($table) : Msql->connect($host, $database)->listtables;
+    my(@table) = $table ? $table : Msql->connect($host, $database)->listtables;
     my($db,%fields,@fields) = Msql->connect($host, $database);
     for $table (@table) {
 	my $st = $db->listfields($table) or next;
@@ -336,11 +337,11 @@ sub relshow {
     if ($_[0]) {
 	$database = shift @_;
 	return "Couldn't connect to $database\n" unless $Dbh->selectdb($database);
-	push @m, "\nDatabase = $database\n";
+	push @m, "\nDatabase   = $database\n";
 	if ($table = shift @_) {
 	    grep /^\Q$table\E$/, $Dbh->ListTables or return join "", @m, qq{Table "$table" not found\n};
 	    my $sth = $Dbh->listfields($table) or return join "", @m, qq{Error reading listfields($table)\n};
-	    push @m, qq{Table = $table\n};
+	    push @m, qq{Table      = $table\n};
 
 	    my $index;
 	    if ($index = shift @_) {
@@ -349,16 +350,22 @@ sub relshow {
 		# relshow database table index
 		#
 
-		return "Too many arguments to relshow\n" unless Msql->getserverinfo ge 2;
+		return "Too many arguments to relshow\n"
+			unless Msql->getserverinfo ge 2;
 		#warn join ":", grep //, $sth->name;
-		grep(/^\Q$index\E$/, $sth->name) or return join "", @m, qq{Index "$index" not found\n};
-		push @m, qq{Index = $index\n};
+		grep(/^\Q$index\E$/, $sth->name)
+			or return join "", @m, qq{Index "$index" not found\n};
+		push @m, qq{Index      = $index\n};
+		my $idxhandle = $Dbh->listindex($table,$index)
+			or return join "", @m,
+				qq{Error reading listindex($table,$index)\n};
+		my @row;
+		@row = $idxhandle->fetchrow; # chop off avl or whatever
+		push @m, qq{Index Type = $row[0]\n};
 		my $border = " +" . ("-"x21) . "+\n";
 		push @m, $border;
 		push @m, sprintf " | %-19s |\n", "      Field";
 		push @m, $border;
-		my $idxhandle = $Dbh->listindex($table,$index) or return join "", @m, qq{Error reading listindex($table,$index)\n};
-		my @row;
 		while (@row = $idxhandle->fetchrow) {
 		    push @m, sprintf " | %-19s |\n", $row[0];
 		}
@@ -475,11 +482,11 @@ Set default host to "host"
 
 Set default database to "database"
 
-=item C<re[lshow] [-h host] [database] [table]>
+=item C<re[lshow] [-h host] [database] [table] [index]>
 
 Describe databases or tables in the same way as done by the relshow
 program. If host or database are specified, the defaults are set to
-these values.
+these values. The prameter C<index> is only supported for mSQL-2.0.
 
 =item C<! EXPR>
 
@@ -523,8 +530,8 @@ the database after every query.
 You need a readline package installed to get the advantage of a
 readline interface. If you don't have it, you won't be able to use the
 arrow keys in a meaningful manner. Term::ReadKey and Term::ReadLine do
-not come with the perl distribution but are available from CPAN (the
-Comprehensive Perl Archive Network).
+not come with the perl distribution but are available from CPAN (see
+http://www.perl.com/CPAN).
 
 See Msql, Term::ReadKey, Term::ReadLine.
 
@@ -536,5 +543,5 @@ See Msql, Term::ReadKey, Term::ReadLine.
 # End of pmsql
 #
 
-close OUT or die "Can't close $file: $!"; chmod 0755, $file or die
-"Can't reset permissions for $file: $!\n";
+close OUT or die "Can't close $file: $!";
+chmod 0755, $file or die "Can't reset permissions for $file: $!\n";

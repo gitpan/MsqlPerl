@@ -438,18 +438,42 @@ msqlgetprotoinfo(package = "Msql")
      OUTPUT:
      RETVAL
 
-SysRet
-msqlcreatedb(handle,db)
-     Msql		handle
-     char *	db
-     PROTOTYPE: $$
+int
+msqlloadconfigfile(configfile)
+     char * configfile
+     PROTOTYPE: $
      CODE:
-     {
-      dRESULT;
-      readSOCKET;
-      RETVAL = msqlCreateDB(sock,db);
-      if (RETVAL == -1) {ERRMSG;}
-     }
+#ifdef IDX_TYPE
+     RETVAL = msqlLoadConfigFile(configfile);
+#else
+     RETVAL = 0;
+#endif
+     OUTPUT:
+     RETVAL
+
+int
+msqlgetintconf(item)
+     char * item
+     PROTOTYPE: $
+     CODE:
+#ifdef IDX_TYPE
+     RETVAL = msqlGetIntConf(item);
+#else
+     RETVAL = 0;
+#endif
+     OUTPUT:
+     RETVAL
+
+char *
+msqlgetcharconf(item)
+     char * item
+     PROTOTYPE: $
+     CODE:
+#ifdef IDX_TYPE
+     RETVAL = msqlGetCharConf(item);
+#else
+     RETVAL = "";
+#endif
      OUTPUT:
      RETVAL
 

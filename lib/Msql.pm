@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.11";
-# $Revision: 1.97 $$Date: 1996/09/08 13:19:00 $$RCSfile: Msql.pm,v $
+$VERSION = "1.12";
+# $Revision: 1.98 $$Date: 1996/12/16 18:27:44 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -277,7 +277,7 @@ default that is compiled into your copy. To use this feature you have
 to set the environment variable MSQL_TCP_PORT. You can do so at any
 time in your program with the command
 
-    $ENV{'MSQL_TCP_PORT'} = 4333;
+    $ENV{'MSQL_TCP_PORT'} = 1234; # or 1112 or 1113 or 4333 or 4334
 
 Any subsequent connect() will establish a connection to the specified
 port.

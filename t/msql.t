@@ -349,18 +349,20 @@ sub drop { shift->query("drop table $_[0]"); }
     }
 }
 
-# I haven't showed you yet a cute (and dirty) trick to save memory. As
+# I haven't shown you yet a cute (and dirty) trick to save memory. As
 # ->query returns an object you can reference this object in a single
 # chain of -> operators. The statement handle is not preserved, and
 # the memory associated with it is cleaned up within a single
 # statement. 'Course you never know, which part of the statement
 # failed--if something fails.
+
 $dbh2->query("select * from $firsttable")->numrows == 10
     and print("ok 28\n") or print("not ok 28\n");
 
 # Interesting the following test. Creating and dropping of tables via
 # two different database handles in quick alteration. There was really
 # a version of mSQL that messed up with this
+
 for (1..3){
     drop($dbh2,$firsttable);
     $secondtable = create($dbh3,$secondtable,"( name char(40) not null,
@@ -375,8 +377,9 @@ drop($dbh2,$firsttable) and  print("ok 29\n") or print("not ok 29\n");
 # correct. See man perlref for an explanation of this kind of
 # referencing/dereferencing. Watch out, that we still use an old
 # statement handle here. The corresponding table has been overwritten
-# quite a few times, but as we are dealing with a in-memeory copy, we
+# quite a few times, but as we are dealing with an in-memeory copy, we
 # still have it available
+
 if ("@{$sth->length}" eq "32 32 32"){
     print "ok 30\n";
 } else {
@@ -384,13 +387,15 @@ if ("@{$sth->length}" eq "32 32 32"){
 }
 
 
-# Here were two useless tests a while back
+# Here were two useless tests a while back that didn't please me after
+# a while
+
 print "ok 31\n";
 print "ok 32\n";
 
-
 # The following tests show, that NULL fields (introduced with
 # msql-1.0.6) are handled correctly:
+
 if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
     $firsttable = create($dbh,$firsttable,"( she char(14) primary key,
 	him int, who char(1))") or test_error();
@@ -402,12 +407,14 @@ if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syn
 
 # As you see, we don't insert a value for "him" and "who", so we can
 # test the undefinedness
+
 $dbh->query("insert into $firsttable (she) values ('jazz')") or test_error;
 
 $sth = $dbh->query("select * from $firsttable") or test_error;
 @row = $sth->fetchrow() or test_error;
 
 # "she" is "jazz", thusly defined
+
 if (defined $row[0]) {
     print "ok 33\n";
 } else {
@@ -415,6 +422,7 @@ if (defined $row[0]) {
 }
 
 # field "him", a character field, should not be defined
+
 if (defined $row[1]) {
     print "not ok 34\n";
 } else {
@@ -422,31 +430,34 @@ if (defined $row[1]) {
 }
 
 # field "who", an integer field, should not be defined
+
 if (defined $row[2]) {
     print "not ok 35\n";
 } else {
     print "ok 35\n";
 }
 
-    # So far we have evaluated metadata in scalar context. Let's see,
-    # if array context works
-    $i = 35;
-    foreach (qw/table name type is_not_null is_pri_key length/) {
-	my @arr = $sth->$_();
-	if (@arr == 3){
-	    print "ok ", ++$i, "\n";
-	} else {
-	    print "not ok ", ++$i, ": @arr\n";
-	}
+# So far we have evaluated metadata in scalar context. Let's see,
+# if array context works
+
+$i = 35;
+foreach (qw/table name type is_not_null is_pri_key length/) {
+    my @arr = $sth->$_();
+    if (@arr == 3){
+	print "ok ", ++$i, "\n";
+    } else {
+	print "not ok ", ++$i, ": @arr\n";
     }
+}
     
-    # A non-select should return TRUE, and if anybody tries to use this
-    # return value as an object reference, we should not core dump
-    $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
-    eval {$sth->fetchrow;};
-    if ($@ =~ /^Can\'t call method/) {
-	print "ok 42\n";
-    }
+# A non-select should return TRUE, and if anybody tries to use this
+# return value as an object reference, we should not core dump
+
+$sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
+eval {$sth->fetchrow;};
+if ($@ =~ /^Can\'t call method/) {
+    print "ok 42\n";
+}
     
 
 {
