@@ -1,11 +1,12 @@
 package Msql;
+use vars qw($db_errstr);
 
 require Msql::Statement;
+use vars qw($VERSION $QUIET @ISA @EXPORT);
+$VERSION = "1.05";
+# $Revision: 1.90 $$Date: 1996/05/28 19:54:32 $$RCSfile: Msql.pm,v $
 
-$VERSION = $VERSION = "1.03";
-# $Revision: 1.88 $$Date: 1995/10/01 13:22:52 $$RCSfile: Msql.pm,v $
-
-$QUIET = $QUIET = 0;
+$QUIET = 0;
 
 require Carp;
 require AutoLoader;
@@ -55,38 +56,6 @@ sub AUTOLOAD {
 
 bootstrap Msql;
 
-# Preloaded methods go here.  Autoload methods go after __END__, and are
-# processed by the autosplit program.
-
-# The following lines were testing code for a Tie'd interface.
-# But it was rather slow.
-# Outcommented in case somebody would like to implement anything Tie'd
-#package Msql;
-
-#sub TieQuery {
-#    require Msql::Tie;
-#    package Msql::Statement;
-#    use Carp;
-#    my($self,$query) = @_;
-#    my %hash;
-#    my $sth = $self->FastQuery($query) or return carp("Unsuccessful Query");
-#    tie %hash, Msql::Tie;
-#    $hash{MYTIE}=$sth;
-#    bless \%hash;
-#}
-
-#sub TieListFields {
-#    require Msql::Tie;
-#    package Msql::Statement;
-#    use Carp;
-#    my($self,$query) = @_;
-#    my %hash;
-#    my $sth = $self->FastListFields($query) or return carp("Unsuccessful ListFields");
-#    tie %hash, Msql::Tie;
-#    $hash{MYTIE}=$sth;
-#    bless \%hash;
-#}
-
 package Msql;
 
 1;
@@ -94,7 +63,7 @@ __END__
 
 =head1 NAME
 
-The Msql Perl Adaptor: Simple Perl interface to the mSQL database
+Msql - Perl interface to the mSQL database
 
 =head1 SYNOPSIS
 
@@ -227,6 +196,7 @@ $sth knows about all metadata that are provided by the API:
 
   $scalar = $sth->numrows;    
   $scalar = $sth->numfields;  
+
   $arrref  = $sth->table;       the names of the tables of each column
   $arrref  = $sth->name;        the names of the columns
   $arrref  = $sth->type;        the type of each column, defined in msql.h
@@ -236,11 +206,15 @@ $sth knows about all metadata that are provided by the API:
   $arrref  = $sth->is_pri_key;  array of boolean
   $arrref  = $sth->length;      array of the length of each field in bytes
 
+The six last methods return an array reference (L<perlref/> for
+details) when called in a scalar context. In an array context the
+return the array of the values.
+
 
 =head2 The C<-w> switch
 
-Also with Msql the -w switch is your friend! If you call your perl
-program with the -w switch you get the warnings that normally are
+Also with Msql the C<-w> switch is your friend! If you call your perl
+program with the C<-w> switch you get the warnings that normally are
 stored in $Msql::db_errstr on STDERR. This is a handy method to get
 the error messages from the msql server without coding it into your
 program. If you want to know in greater detail what's going on, set
@@ -248,26 +222,31 @@ the environment variables that are described in David's
 manual. David's debugging aid is excellent, there's nothing to be
 added.
 
-If you want to use the -w switch but do not want to see the error
+If you want to use the C<-w> switch but do not want to see the error
 messages from the msql daemon, you can set the variable $Msql::QUIET
 to some true value, and they will be suppressed.
 
 =head1 PREREQUISITES
 
 mSQL is a libmsql.a library written by David Hughes
-L<bambi@Bond.edu.au>.  You get that stuff at 
+L<URL: mailto:bambi@Bond.edu.au>.  You get that at 
 L<URL: ftp://Bond.edu.au/pub/Minerva/msql>.
 
 To use the adaptor you definitely have to install this library first.
 
 =head1 AUTHOR
 
-andreas koenig L<koenig@franz.ww.TU-Berlin.DE>
+andreas koenig C<koenig@franz.ww.TU-Berlin.DE>
 
+=head1 SEE ALSO
 
-=head1 BUGS
-
-Msql does not support Tim Bunce's Database Interface DBI (yet :')
+Alligator Descartes wrote a database driver for Tim Bunce's DBI. I
+recommend anybody to carefully watch the development of this module
+(L<DBI::mSQL>). Msql is a simple, stable, and fast module, and it will
+supported for a long time. But it's a dead end. I expect in the medium
+term, that the DBI efforts result in a richer module family with
+better support and more functionality. Alligator maintains an
+interesting page on the DBI development: http://www.hermetica.com/
 
 =cut
 

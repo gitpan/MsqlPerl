@@ -1,33 +1,17 @@
-Subject: Where can I get converters for the pod?
+Subject: HPUX compilation goes wrong...
 
-      >From: Kenwrick Chan <kchan@leahi.kcc.hawaii.edu>
-      >Andreas,
-      >I'm new to working in mSQL and I wanted to work with your MsqPerl 
-      >package.  Your installation instructions mention converting the 
-      >documentation into from pod format.  Is there another way to get that 
-      >info?  I don't have the info on how to convert the file format.
+    From: Yiorgos Adamopoulos <Y.Adamopoulos@noc.ntua.gr>
 
-    perl comes with a program pod2man and another one called
-    pod2html. Both reside in the pod/ subdirectory of the perl source
-    tree. The current version of perl (5.001L) installs both programs
-    by default.
+    I successfully compiled MsqlPerl for a HP817 (HP-UX 9.04/s800) using Perl5.002,
+    msql-1.0.14 and gcc-2.7.2.  I added CC_ONLY = -fPIC to site.mm after running
+    setup.
 
-
-
-Subject: HPUX -- no chance?
-
-        > From: Sandro Soramae <sandro@hydra.unive.it>
-
-        > I wanna say I found the biggest problem in msql library,
-        > 'cause makefile uses gcc to compile it.
-
-        > It's necessary to compile the library with cc with +z flag
-        > option.
 
 Subject: Where can I find more documentation?
 
-	Msql.pm IS the manpage in pod format. Get perl5.001m or better
-	and after 'make install' you can try 'perldoc Msql' and read
-	the manpage. Also, the test script, t/msql.t might help you to
-	sort things out.
+    Msql.pm IS the manpage in pod format. If you're on UNIX you should be
+    able to read it with 'man Msql'. On other operation systems try
+    'perldoc Msql'. Also, the test script, t/msql.t might help you to sort
+    things out. The most recent addition is the pmsql program which may
+    also help you to learning by example.
 

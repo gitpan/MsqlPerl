@@ -1,12 +1,12 @@
-The code in this directory is
+The code in this package is
 
-Copyright (c) 1994,1995 Andreas Koenig <a.koenig@mind.de>
+Copyright (c) 1994-1996 Andreas Koenig <a.koenig@mind.de>
 
 and may be used, copied and redistributed under the same terms as perl 
 (see the files README, Copying and Artistic in the perl distribution).
 
-The mSQL-Perl Adaptor
----------------------
+Prerequisites
+-------------
 
 libmsql.a library written by David Hughes <bambi@Bond.edu.au> that
 implements an API between arbitrary client programs and the mSQL
@@ -15,12 +15,65 @@ database engine. You get that library and the database engine from
     ftp://Bond.edu.au/pub/Minerva/msql/msql-*.tar.gz
 
 To use the adaptor you definitely have to install the database and the
-library first.
+library first. From Version 1.04 of MsqlPerl you need perl5.002 or
+better installed.
+
+What you achieve with MsqlPerl
+------------------------------
+
+MsqlPerl is an interface between the perl programming language and the
+mSQL programming API that comes with the mSQL relational database
+management system. All functions provided by the mSQL programming API
+are supported.
+
+From perl you activate the interface with the statement
+
+    use Msql;
+
+After that you can connect to multiple msql database servers and send
+multiple queries to any of them via an simple object oriented
+interface. Two types of objects are available: database handles and
+statement handles. Perl returns a database handle to the Connect
+method like so:
+
+    $dbh = Msql->Connect($hostname,$databasename);
+
+Once you have connected to a database, you get a statement handle
+with:
+
+    $sth = $dbh->Query("select foo from bar");
+
+You can open as many queries as you like simultaneously by selecting a
+different scalar to hold the object:
+
+    $another_sth = $dbh->Query("select bar from foo");
+
+The statement handle allows you to step through the virtual table
+returned from the database with the FetchRow method:
+
+    @row = $sth->FetchRow;
+
+You can access all metadata that mSQL supplies for a given table. To
+find out the number of rows or the number of fields returned by a
+query you simply say:
+
+    $numrows = $sth->numrows;
+    $numfields = $sth->numfields;
+
+To find out the size in bytes for the field with the offset 0 (the
+first field of a query), you say:
+
+    $length = $sth->length->[0];
+
+As for other metadata available, consult the manpage that comes with
+MsqlPerl and study the examples in the file t/msql.t, which is the
+extensive testscript to test your installation, but is heavily
+commented, so you may use it as a tutorial.
 
 Installing The Adaptor
 ----------------------
 
-Unpack in any directory on your harddisk and run
+Unpack in any directory anywhere on your filesystem and run
 
     perl Makefile.PL
     make
@@ -36,28 +89,36 @@ If the tests finish with `ok', give it a try to
 
 If anything fails, check the documentation of the ExtUtils::MakeMaker
 module. Especially if you're facing problems with dynamic loading, set
-up the environment variable PERL_DL_DEBUG to some value greater 0 to
-get some more information from the DynaLoader.
-
-There was a report, that the installation of msql did not cover the
-installation of the libmisc.a library (seems to be relevant for NeXT
-and Ultrix users only). If `make test' fails with `Undefined symbols:
-_strdup', then you will have to install libmisc.a by hand, i.e. copy
-it into /usr/local/Minerva/lib and start again from `perl
-Makefile.PL'.
+the environment variable PERL_DL_DEBUG to some value greater 0 to get
+some more information from the DynaLoader.
 
 Documentation
 -------------
 
-Documentation is available in pod format within the file Msql.pm. You
-can turn this file into a manpage or a html page with the pod2*
-programs that come with the perl distribution. perl5.001m and better
-supplies a "perldoc" program, so you can say now "perldoc Msql". Later
-perls will probably have support for you to say "man Msql".
+Documentation is available in pod format within the file
+Msql.pm. During installation this should be turned into a manpage. Try
+'man Msql', and if this doesn't work on your system, try 'perldoc
+Msql'.
 
 The tutorial that may be helpful for you is in the file t/msql.t. This
-file IS the test program for this package and illustrates nearly all
-basic operations that are available.
+file is the test program for this package and illustrates all basic
+operations that are available.
+
+pmsql
+-----
+
+This package comes with a small standalone program, pmsql. With only
+250 or so lines of code it is a full fledged shell for your
+interactive communication needs with your mSQL server(s). Try 'man
+pmsql' or 'perldoc pmsql' after installation to get at the documention
+embedded in the program.
+
+pmsql is similar to both the msql monitor and the relshow program. The
+main advantage over those is that if you have Term::ReadKey and
+Term::ReadLine::Perl installed on your system, you have access to a
+readline clone, entirely written in perl with command line editor and
+history, and you get the output of any select query piped into your
+favorite pager program.
 
 Mailing list
 ------------

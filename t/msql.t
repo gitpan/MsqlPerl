@@ -6,11 +6,11 @@
 # problems you might have with resolving "localhost". Too many systems
 # are configured wrong in this respect. But you're welcome to test it
 # out.
-$host = shift || "";
+$host ||= shift @ARGV || "";
 
 # That's the standard perl way tostart a testscript. It announces that
 # so many tests follow
-print "1..35\n";
+print "1..62\n";
 
 use Msql;
 
@@ -319,12 +319,12 @@ if ( $dbh2->Query("drop table $firsttable") ) {
 $dbh->Query("create table $firsttable ( she char(14) primary key,
 	him int, three char(1))") or die;
 
-# As you see, we don't insert a value for "him" and "three"
+# As you see, we don't insert a value for "him" and "three", so we can
+# test the undefinedness
 $dbh->Query("insert into $firsttable (she) values ('jazz')") or die;
 
-# You have seen this kind of chaining above. As I'm absolutely sure,
-# there will be returned only one row, I do it again
-@row = $dbh->Query("select * from $firsttable")->FetchRow() or die $Msql::db_errstr;
+$sth = $dbh->Query("select * from $firsttable") or die $Msql::db_errstr;
+@row = $sth->FetchRow() or die $Msql::db_errstr;
 
 # "she" is "jazz", thusly defined
 if (defined $row[0]) {
@@ -347,8 +347,56 @@ if (defined $row[2]) {
     print "ok 35\n";
 }
 
+# So far we have evaluated metadata in scalar context. Let's see,
+# if array context works
+$i = 35;
+foreach (qw/table name type is_not_null is_pri_key length/) {
+    my @arr = $sth->$_();
+    if (@arr == 3){
+	print "ok ", ++$i, "\n";
+    } else {
+	print "not ok ", ++$i, ": @arr\n";
+    }
+}
+
+# A non-select should return TRUE, and if anybody tries to use this
+# return value as an object reference, we should not core dump
+$sth = $dbh->Query("insert into $firsttable values (\047x\047,2,\047y\047)");
+eval {$sth->table;};
+if ($@ =~ /^Can\'t call method/) {
+    print "ok 42\n";
+}
+
+# So many people have problems using the ListFields method,
+# so we finally provide a simple example.
+$sth_query = $dbh->Query("select * from $firsttable");
+$sth_listf = $dbh->ListFields($firsttable);
+$i = 43;
+for $method (qw/name table length type is_not_null is_pri_key/) {
+    for (0..$sth_query->numfields -1) {
+	# whatever we do to the one statementhandle, the other one has
+	# to behave exactly the same way
+	if ($sth_query->$method()->[$_] eq $sth_listf->$method()->[$_]) {
+	    print "ok $i\n" ;
+	} else {
+	    print "not ok $i\n";
+	}
+	$i++;
+    }
+}
+
+# The only difference: the ListFields sth must not have a row associated with
+if ($sth_listf->numrows == 0) {
+    print "ok 61\n";
+} else {
+    print "not ok 61\n";
+}
+if ($sth_query->numrows > 0) {
+    print "ok 62\n";
+} else {
+    print "not ok 62\n";
+}
+
+
 $dbh->Query("drop table $firsttable") or die $Msql::db_errstr;
-
-
-
 

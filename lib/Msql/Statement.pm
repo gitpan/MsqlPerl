@@ -11,10 +11,18 @@ sub AUTOLOAD {
 	       $AUTOLOAD eq "type" ||
 	       $AUTOLOAD eq "is_not_null" ||
 	       $AUTOLOAD eq "is_pri_key" ||
-	       $AUTOLOAD eq "length" ||
-	       $AUTOLOAD eq "db";
+	       $AUTOLOAD eq "length";
     my $auto = uc $AUTOLOAD;
-    eval "sub $AUTOLOAD {return shift->fetchinternal($auto);}";
+    if ($AUTOLOAD =~ /^num/) {
+	eval qq{sub $AUTOLOAD {return shift->fetchinternal($auto);}};
+    } else {
+	eval qq{sub $AUTOLOAD {
+			       return wantarray ?
+			       \@{shift->fetchinternal($auto)} :
+			       shift->fetchinternal($auto);
+			      }
+	    };
+    }
     goto &$AUTOLOAD;
 }
 

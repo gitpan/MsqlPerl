@@ -3,6 +3,7 @@
 #include "perl.h"
 #include "XSUB.h"
 
+
 #include "msql.h"
 
 typedef int SysRet;
@@ -201,10 +202,14 @@ not_there:
 
 
 MODULE = Statement	PACKAGE = Msql::Statement	PREFIX = msql
+
+PROTOTYPES: ENABLE
+
 SV *
 fetchinternal(handle, key)
      Msql::Statement		handle
      char *	key
+   PROTOTYPE: $$
    CODE:
 {
   /* fetchinternal */
@@ -319,6 +324,7 @@ fetchinternal(handle, key)
 void
 msqlFetchRow(handle)
    Msql::Statement	handle
+   PROTOTYPE: $
    PPCODE:
 {
 /* This one is very simple, it just returns us an array of the fields
@@ -336,8 +342,8 @@ msqlFetchRow(handle)
     msqlFieldSeek(result,0);
     if ( msqlNumFields(result) > 0 )
       placeholder = msqlNumFields(result);
+    EXTEND(sp,placeholder);
     while(off < placeholder){
-      EXTEND(sp,1);
       curField = msqlFetchField(result);
 
       if (cur[off]){
@@ -355,6 +361,7 @@ void
 msqlDataSeek(handle,pos)
    Msql::Statement	handle
    int			pos
+   PROTOTYPE: $$
    CODE:
 {
 /* In my eyes, we don't need that, but as it's there we implement it,
@@ -376,6 +383,7 @@ msqlDataSeek(handle,pos)
 void
 msqlDESTROY(handle)
    Msql::Statement	handle
+   PROTOTYPE: $
    CODE:
 {
 /* We have to free memory, when a handle is not used anymore */
@@ -410,6 +418,7 @@ msqlConnect(package = "Msql",host=NULL,db=NULL)
      char *		package
      char *		host
      char *		db
+   PROTOTYPE: $;$$
    CODE:
 {
 /* As we may have multiple simultaneous sessions with more than one
@@ -453,6 +462,7 @@ SysRet
 msqlSelectDB(handle, db)
      Msql		handle
      char *		db
+   PROTOTYPE: $$
    CODE:
 {
 /* This routine does not return an object, it just sets a database
@@ -480,6 +490,7 @@ void
 msqlQuery(handle, query)
    Msql		handle
      char *	query
+   PROTOTYPE: $$
    CODE:
 {
 /* A successful query returns a statement handle in the
@@ -513,17 +524,22 @@ msqlQuery(handle, query)
     ERRMSG;
   } else {
     hv = (HV*)sv_2mortal((SV*)newHV());
-    if (result = msqlStoreResult())
+    if (result = msqlStoreResult()){
       hv_store(hv,"RESULT",6,(SV *)newSViv((IV)result),0);
-    rv = newRV((SV*)hv);
-    stash = gv_stashpv(package, TRUE);
-    ST(0) = sv_2mortal(sv_bless(rv, stash));
+      rv = newRV((SV*)hv);
+      stash = gv_stashpv(package, TRUE);
+      ST(0) = sv_2mortal(sv_bless(rv, stash));
+    } else {
+      ST(0) = sv_newmortal();
+      sv_setnv( ST(0), 1);
+    }
   }
 }
 
 void
 msqlListDBs(handle)
    Msql		handle
+   PROTOTYPE: $
    PPCODE:
 {
 /* We return an array, of course. */
@@ -548,6 +564,7 @@ msqlListDBs(handle)
 void
 msqlListTables(handle)
    Msql		handle
+   PROTOTYPE: $
    PPCODE:
 {
 /* We return an array, of course. */
@@ -573,6 +590,7 @@ void
 msqlListFields(handle, table)
    Msql			handle
    char *		table
+   PROTOTYPE: $$
    CODE:
 {
 /* This is similar to a query with 0 rows in the result. Unlike with
@@ -615,6 +633,7 @@ msqlListFields(handle, table)
 void
 msqlDESTROY(handle)
    Msql			handle
+   PROTOTYPE: $
    CODE:
 {
 /* Somebody has freed the object that keeps us connected with the

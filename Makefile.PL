@@ -1,62 +1,40 @@
 use ExtUtils::MakeMaker;
-require 5.001;
-
-if ($ExtUtils::MakeMaker::Version >= 4.15) {
-    # This is important only for the developer:
-    $X{'macro'} = {CONFIGDEP => '$(PERL_ARCHLIB)/Config.pm $(PERL_INC)/config.h lib/Msql.pm'};
-}
-
-if ($ExtUtils::MakeMaker::Version < 4.17) {
-    &initialize();
-    $X{LIBS}     = "-L$libdir -lmsql -lmisc";
-    $X{INC}      = "-I$headerdir";
-    $X{H}        = \@headerfiles;
-    $X{VERSION}  = $VERSION;
-} else {
-    $X{CONFIGURE} = \&initialize;
-}
+require 5.002;
+$Verbose++ if $ENV{USER} eq "k";
 
 
-WriteMakefile(%X);
+WriteMakefile(
+	NAME       => "Msql",
+	"DISTNAME" => "MsqlPerl",
+	"dist"     => { SUFFIX   => ".gz", DIST_DEFAULT => 'all tardist',
+			    COMPRESS => "gzip -9f" },
+        VERSION_FROM => "lib/Msql.pm",
+	EXE_FILES => [qw(pmsql)],
+	CONFIGURE  => \&initialize,
+);
 
 
 
 sub initialize {
-    %X=(
-	NAME       => "Msql",
-	"DISTNAME" => "MsqlPerl",
-	"clean"    => { FILES => 'Msql.pm.html bench/*~' },
-	"dist"     => { SUFFIX   => "gz", DIST_DEFAULT => 'all uutardist',
-			    COMPRESS => "gzip -9f",
-			},
-       );
-    $Minervadir="/usr/local/Minerva";
-    
-    if (-f "$Minervadir/include/msql.h") {
-	print "Assuming \"$Minervadir\" is your Minerva directory\n";
+    my %X=();
+    my $minervadir="/usr/local/Minerva";
+
+    if (-f "$minervadir/include/msql.h") {
+	print "Assuming \"$minervadir\" is your Minerva directory\n";
     } else {
-	$Minervadir=prompt("
+	$minervadir=prompt("
 Where is your msql installed? Please name the directory that contains
-the subdirs lib/ and include/.",$Minervadir);
+the subdirs lib/ and include/.",$minervadir);
     }
     
-    $headerdir="$Minervadir/include";
+    my $headerdir="$minervadir/include";
     die "No msql.h file found\n" unless -f "$headerdir/msql.h";
-    $libdir="$Minervadir/lib";
-    
-    open MSQL, "lib/Msql.pm" or die "open: $!";
-    while (!$VERSION){
-	$_=<MSQL>;
-	next unless /VERSION/;
-	eval;
-    }
-    close MSQL;
+    my $libdir="$minervadir/lib";
     
     @headerfiles = ("$headerdir/msql.h");
-    $X{LIBS}     = "-L$libdir -lmsql -lmisc";
+    $X{LIBS}     = "-L$libdir -lmsql";
     $X{INC}      = "-I$headerdir";
     $X{H}        = \@headerfiles;
-    $X{VERSION}  = $VERSION;
     \%X;
 }
 

@@ -1,3 +1,34 @@
+May 28, 1996
+   Added pmsql(1), version 1.14 or so, which integrates relshow as a
+   method. Deleted standalone relshow(1).
+
+   Added prototypes just to get rid of the warning (method prototypes
+   are ignored by perl 5.002 anyway).
+
+   Added an example of ListFields usage to msql.t.
+
+   Deleted a the (outcommented) Tie code in Msql.pm as it won't come
+   back for sure.
+
+April 30, 1996
+   Added a relshow(1) clone to the distribution just to have a sample
+   program that actually does something.
+
+March 15, 1996
+   Metadata access simplified: in array context a statement handle
+   method does not return an array reference but the array itself.
+
+   Non-selects now return 1 on success instead of a worthless
+   statement handle.
+
+   The outdated FAQ is not in the distribution anymore.
+
+   Fixed the manpages, so perl5.002's pod2man doesn't grok.
+
+   Added 7 tests to test the above mentioned changes.
+
+   Simplified Makefile.PL with VERSION_FROM. Needs perl5.002.
+
 October 1, 1995
    Fixed a serious bug. Since we do not store $db->{SOCK} and family
    anymore, it's legal that the hash-entry doesn't exist. 1.02
@@ -62,3 +93,6 @@ Feb 27, 1995
 
 Feb 13, 1995
     $sth->{LENGTH} added.
+
+About August 1994
+    First alpha release.

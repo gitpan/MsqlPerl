@@ -1,11 +1,11 @@
-Announce			Announcement
-FAQ				Frequently Asked Questions
 Changes				History file
+FAQ                             Frequently asked questions
 MANIFEST			This file
 Makefile.PL			Makefile generator
-lib/Msql.pm			Perl Module
-lib/Msql/Statement.pm		Perl Module
 Msql.xs				XS file (see man perlapi)
 README				Please read
+lib/Msql.pm			Perl Module
+lib/Msql/Statement.pm		Perl Module
+pmsql.PL                        msql and relshow in one interactive program
 t/msql.t			Test script, also a valuable tutorial for the clueless
 typemap				Typemap file (see man perlapi)
