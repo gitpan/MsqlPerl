@@ -7,24 +7,44 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-$host = shift @ARGV || "";
+my $host = shift @ARGV || "";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
 # wrong;
 
-BEGIN { print "1..67\n"; }
+BEGIN { print "1..68\n"; }
 
 use Msql;
 
-package main;
+# Force yourself to strict programming. See man strict for details.
+use strict;
+
+# Variables we're going to use
+my(
+   $query,
+   $firsttable,
+   $secondtable,
+   $dbh,
+   $dbh2,
+   $dbh3,
+   $sth,
+   $i,
+   @row,
+   %hash,
+  );
 
 # You may connect in two steps: (1) Connect and (2) SelectDB...
 
 if ($dbh = Msql->connect($host)){
     print "ok 1\n";
 } else {
-    die "not ok 1: $Msql::db_errstr\n";
+    print STDERR qq{not ok 1: $Msql::db_errstr
+\tIt looks as if your server is not up and running.
+\tThis test requires a running server.
+\tPlease make sure your server is running and retry.
+};
+    exit;
 }
 
 if ($dbh->selectdb("test")){
@@ -59,42 +79,36 @@ sub test_error {
 }
 
 
-# Now we create two tables that are certainly not in the test
-# database
+# Now we create two tables that are certainly not in the test database
+# If you don't understand the trickery here, just skip this section, No big deal.
+{
+    my $goodtable = "TABLE00";
+    my(%foundtable,@foundtable);
+    @foundtable  =  $dbh->listtables;
+    @foundtable{@foundtable} = (1) x @foundtable; # all existing tables are now keys in %foundtable
+    my $limit = 0;
 
-# If you haven't seen before, remember this handy method to build a
-# hash from an array:
-
-@foundtable  =  $dbh->listtables;
-@foundtable{@foundtable} = (1) x @foundtable; # all existing tables are now keys in %foundtable
-
-$goodtable = "TABLE00";
-1 while $foundtable{++$goodtable};
-$firsttable = $goodtable;
-1 while $foundtable{++$goodtable};
-$secondtable = $goodtable;
-
-# Always check the return value of any statement! If you use the -w
-# switch, you see warnings as they happen, but it's good style to
-# check for errors before they happen
-
-my $query = qq{
-    create table $firsttable (
-			      she char(32),
-			      him char(32),
-			      who char (32)
-			     )
-};
-$dbh->query($query) or test_error(0,$query,Msql->errmsg);
-
-$query = qq{
-    create table $secondtable (
-			       she char(32),
-			       him char(32) not null,
-			       who char (32)
-			      )
-};
-$dbh->query($query) or test_error(0,$query,Msql->errmsg);
+    for ($firsttable, $secondtable) {
+	while () {
+	    next if $foundtable{++$goodtable};
+	    my $query = qq{
+		create table $goodtable (
+					 she char(32),
+					 him char(32) not null,
+					 who char (32)
+					)
+	    };
+	    unless ($dbh->query($query)){
+		die "Cannot create table: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
+		next;
+	    }
+	    $_ = $goodtable;
+	    last;
+	}
+    }
+    # For the tests in this script we have two tablenames that we can
+    # peruse: $firsttable and $secondtable
+}
 
 # Now we write some test records into the two tables. Note, we *know*,
 # these tables are empty
@@ -109,7 +123,8 @@ for $query (
     $dbh->query($query) or test_error(0,$query);
 }
 
-$sth = $dbh->query("select * from $firsttable") or test_error();
+$query = "select * from $firsttable";
+$sth = $dbh->query($query) or test_error(0,$query);
 
 ($sth->numrows == 3)   and print("ok 4\n") or print("not ok 4\n"); # three rows
 ($sth->numfields == 3) and print("ok 5\n") or print("not ok 5\n"); # three columns
@@ -134,21 +149,23 @@ $sth->table->[1] eq $sth->table->[2]
 CHAR_TYPE() == $sth->type->[0]
     and print ("ok 9\n") or print("not ok 9\n");
 
-# Now we count the rows ourselves, we don't trust anybody
-$rowcnt=0;
-while (@row = $sth->fetchrow()){
-    $rowcnt++;
-}
+{
+    # Now we count the rows ourselves, we don't trust anybody
+    my $rowcnt=0;
+    while (@row = $sth->fetchrow()){
+	$rowcnt++;
+    }
 
-# We haven't yet tested DataSeek, so lets count again
-$sth->dataseek(0);
-while (@row = $sth->fetchrow()){
-    $rowcnt++;
-}
+    # We haven't yet tested DataSeek, so lets count again
+    $sth->dataseek(0);
+    while (@row = $sth->fetchrow()){
+	$rowcnt++;
+    }
 
-# $rowcount now==6, twice the number of rows we've seen
-($rowcnt/2 == $sth->numrows)
-    and print ("ok 10\n") or print("not ok 10\n");
+    # $rowcount now==6, twice the number of rows we've seen
+    ($rowcnt/2 == $sth->numrows)
+	and print ("ok 10\n") or print("not ok 10\n");
+}
 
 
 # let's see the second table
@@ -237,20 +254,18 @@ $sth = $dbh->query  ("select * from $firsttable
 @row = $sth->fetchrow or warn "$firsttable didn't find a matching row";
 $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
 
-# Isn't it annoing, that we have to remember, which field has which
-# name? What if we ever decide to change the table structure? This is
-# a simple way to handle your table in the relational way:
-
-# %fieldnum is a hash that associates the index number for each field
-# name:
-@fieldnum{@{$sth->name}} = 0..@{$sth->name}-1;
-
-# %fieldnum is now (she => 0, him => 1, who => 2)
-
-# So we do not have to hard-code the zero for "she" here
-$row[$fieldnum{"she"}] eq 'Sabine'
-    and print ("ok 18\n") or print("not ok 18\n");
-
+{
+    # %fieldnum is a hash that associates the index number for each field
+    # name:
+    my %fieldnum;
+    @fieldnum{@{$sth->name}} = 0..@{$sth->name}-1;
+    
+    # %fieldnum is now (she => 0, him => 1, who => 2)
+    
+    # So we do not have to hard-code the zero for "she" here
+    $row[$fieldnum{"she"}] eq 'Sabine'
+	and print ("ok 18\n") or print("not ok 18\n");
+}
 
 # After 18 tests, the database handle may feel the desire to rest. Or
 # maybe the writer of this script has forgotten, that he is already
@@ -275,14 +290,15 @@ $dbh2->sock =~ /^\d+$/ and print("ok 21\n") or print("not ok 21\n");
 $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22\n");
 
 
-# Does ListDBs find the test database? Sure...
-@array = $dbh2->listdbs;
-grep( /^test$/, @array ) and print("ok 23\n") or print("not ok 23\n");
+{
+    # Does ListDBs find the test database? Sure...
+    my @array = $dbh2->listdbs;
+    grep( /^test$/, @array ) and print("ok 23\n") or print("not ok 23\n");
 
-# Does ListTables now find our $firsttable?
-@array = $dbh2->listtables;
-grep( /^$firsttable$/, @array )  and print("ok 24\n") or print("not ok 24\n");
-
+    # Does ListTables now find our $firsttable?
+    @array = $dbh2->listtables;
+    grep( /^$firsttable$/, @array )  and print("ok 24\n") or print("not ok 24\n");
+}
 
 # The third connection within a single script. I promise, this will do...
 if ($dbh3 = Connect Msql($host,"test")){
@@ -296,27 +312,49 @@ $dbh3->database eq "test" and print("ok 27\n") or print "not ok 27\n";
 
 
 # For what it's worth, we have a tough job for the server here. First
-# we define two simple subroutines
-sub create {"create table $_[0] ( name char(40) not null,
-            num int, country char(4), time real )";}
-sub drop {"drop table $_[0]";}
+# we define two simple subroutines. The goal of these is to make the
+# create table statement independent of what happens on the server
+# side. If the table cannot be created we magic increment the
+# suggested name and retry. We return the incremented table name. With
+# this setting we can run the test script in parallel in many
+# processes.
 
-# Then we insert some nonsense changing the dbhandle quickly
-$C="AAAA"; $N=1;
-$dbh2->query(drop($firsttable)) or test_error(0,drop($firsttable));
-$dbh2->query(create($firsttable)) or test_error(0,create($firsttable));
-
-for (1..5){
-    $dbh2->query("insert into $firsttable values
-	('".$C++."',".$N++.",'".$C++."',".rand().")") or test_error();
-    $dbh3->query("insert into $firsttable values
-	('".$C++."',".$N++.",'".$C++."',".rand().")") or test_error();
+sub create {
+    my($db,$tablename,$createexpression) = @_;
+    my($query) = "create table $tablename $createexpression";
+    my $limit = 0;
+    while (! $db->query($query)){
+	die "Cannot create table: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
+	$tablename++;
+	$query = "create table $tablename $createexpression";
+    }
+    $tablename;
 }
 
-# I haven't showed you yet a cute trick to save memory. As query
-# returns an object you can reference this object in a single chain of
-# -> operators. The statement handle is not preserved, and the memory
-# associated with it is cleaned up within a single statement
+sub drop { shift->query("drop table $_[0]"); }
+
+# Then we insert some nonsense changing the dbhandle quickly
+{
+    my $C="AAAA"; 
+    my $N=1;
+    drop($dbh2,$firsttable);
+    $firsttable = create($dbh2,$firsttable,"( name char(40) not null,
+            num int, country char(4), time real )");
+
+    for (1..5){
+	$dbh2->query("insert into $firsttable values
+	('".$C++."',".$N++.",'".$C++."',".rand().")") or test_error();
+	$dbh3->query("insert into $firsttable values
+	('".$C++."',".$N++.",'".$C++."',".rand().")") or test_error();
+    }
+}
+
+# I haven't showed you yet a cute (and dirty) trick to save memory. As
+# ->query returns an object you can reference this object in a single
+# chain of -> operators. The statement handle is not preserved, and
+# the memory associated with it is cleaned up within a single
+# statement. 'Course you never know, which part of the statement
+# failed--if something fails.
 $dbh2->query("select * from $firsttable")->numrows == 10
     and print("ok 28\n") or print("not ok 28\n");
 
@@ -324,16 +362,14 @@ $dbh2->query("select * from $firsttable")->numrows == 10
 # two different database handles in quick alteration. There was really
 # a version of mSQL that messed up with this
 for (1..3){
-    $query = drop($firsttable);
-    $dbh2->query($query) or test_error(0,$query);
-    $query = create($secondtable);
-    $dbh2->query($query) or test_error(0,$query);
-    $query = drop($secondtable);
-    $dbh3->query($query) or test_error(0,$query);
-    $query = create($firsttable);
-    $dbh3->query($query) or test_error(0,$query);
+    drop($dbh2,$firsttable);
+    $secondtable = create($dbh3,$secondtable,"( name char(40) not null,
+            num int, country char(4), time real )");
+    drop($dbh2,$secondtable);
+    $firsttable = create($dbh3,$firsttable,"( name char(40) not null,
+            num int, country char(4), time real )");
 }
-($dbh2->query(&drop($firsttable)) ) and  print("ok 29\n") or print("not ok 29\n");
+drop($dbh2,$firsttable) and  print("ok 29\n") or print("not ok 29\n");
 
 # A quick check, if the array @{$sth->length} is available and
 # correct. See man perlref for an explanation of this kind of
@@ -348,20 +384,18 @@ if ("@{$sth->length}" eq "32 32 32"){
 }
 
 
-# These tests are quite redundant, left-over from an older version of this script
-if ( $dbh2->query("create table $firsttable (FOO int)") ) {
-    print "ok 31\n" } else {print "not ok 31\n"};
-if ( $dbh2->query("drop table $firsttable") ) {
-    print "ok 32\n" } else {print "not ok 32\n"};
+# Here were two useless tests a while back
+print "ok 31\n";
+print "ok 32\n";
 
 
 # The following tests show, that NULL fields (introduced with
 # msql-1.0.6) are handled correctly:
 if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
-    $dbh->query("create table $firsttable ( she char(14) primary key,
+    $firsttable = create($dbh,$firsttable,"( she char(14) primary key,
 	him int, who char(1))") or test_error();
 } else {
-    $dbh->query("create table $firsttable ( she char(14),
+    $firsttable = create($dbh,$firsttable,"( she char(14),
 	him int, who char(1))") or test_error();
     $dbh->query("create unique index Xperl1 on $firsttable ( she )") or test_error();
 }
@@ -394,75 +428,80 @@ if (defined $row[2]) {
     print "ok 35\n";
 }
 
-# So far we have evaluated metadata in scalar context. Let's see,
-# if array context works
-$i = 35;
-foreach (qw/table name type is_not_null is_pri_key length/) {
-    my @arr = $sth->$_();
-    if (@arr == 3){
-	print "ok ", ++$i, "\n";
-    } else {
-	print "not ok ", ++$i, ": @arr\n";
+    # So far we have evaluated metadata in scalar context. Let's see,
+    # if array context works
+    $i = 35;
+    foreach (qw/table name type is_not_null is_pri_key length/) {
+	my @arr = $sth->$_();
+	if (@arr == 3){
+	    print "ok ", ++$i, "\n";
+	} else {
+	    print "not ok ", ++$i, ": @arr\n";
+	}
     }
-}
+    
+    # A non-select should return TRUE, and if anybody tries to use this
+    # return value as an object reference, we should not core dump
+    $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
+    eval {$sth->fetchrow;};
+    if ($@ =~ /^Can\'t call method/) {
+	print "ok 42\n";
+    }
+    
 
-# A non-select should return TRUE, and if anybody tries to use this
-# return value as an object reference, we should not core dump
-$sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
-eval {$sth->fetchrow;};
-if ($@ =~ /^Can\'t call method/) {
-    print "ok 42\n";
-}
+{
+    my($sth_query,$sth_listf,$method);
 
-# So many people have problems using the ListFields method,
-# so we finally provide a simple example.
-$sth_query = $dbh->query("select * from $firsttable");
-$sth_listf = $dbh->listfields($firsttable);
-$i = 43;
-for $method (qw/name table length type is_not_null is_pri_key/) {
-    for (0..$sth_query->numfields -1) {
-	# whatever we do to the one statementhandle, the other one has
-	# to behave exactly the same way
-	if ($sth_query->$method()->[$_] eq $sth_listf->$method()->[$_]) {
-	    print "ok $i\n" ;
+    # So many people have problems using the ListFields method,
+    # so we finally provide a simple example.
+    $sth_query = $dbh->query("select * from $firsttable");
+    $sth_listf = $dbh->listfields($firsttable);
+    $i = 43;
+    for $method (qw/name table length type is_not_null is_pri_key/) {
+	for (0..$sth_query->numfields -1) {
+	    # whatever we do to the one statementhandle, the other one has
+	    # to behave exactly the same way
+	    if ($sth_query->$method()->[$_] eq $sth_listf->$method()->[$_]) {
+		print "ok $i\n" ;
+	    } else {
+		print "not ok $i\n";
+	    }
+	    $i++;
+	}
+    }
+    
+    # The only difference: the ListFields sth must not have a row associated with
+    local($^W) = 0;
+    if ($sth_listf->numrows == 0) {
+	print "ok 61\n";
+    } else {
+	print "not ok 61\n";
+    }
+    if ($sth_query->numrows > 0) {
+	print "ok 62\n";
+    } else {
+	print "not ok 62\n";
+    }
+    
+    # Please understand that features that were added later to the module
+    # are tested later. Here's a very nice test. Should be easier to
+    # understand than the others:
+    
+    $sth_query->dataseek(0);
+    $i = 63;
+    while (%hash = $sth_query->fetchhash) {
+	
+	# fetchhash stuffs the contents of the row directly into a hash
+	# instead of a row. We have only two lines to check. Column she
+	# has to be either 'jazz' or 'x'.
+	if ($hash{she} eq 'jazz' or $hash{she} eq 'x') {
+	    print "ok $i\n";
 	} else {
 	    print "not ok $i\n";
 	}
 	$i++;
     }
-}
-
-# The only difference: the ListFields sth must not have a row associated with
-if ($sth_listf->numrows == 0) {
-    print "ok 61\n";
-} else {
-    print "not ok 61\n";
-}
-if ($sth_query->numrows > 0) {
-    print "ok 62\n";
-} else {
-    print "not ok 62\n";
-}
-
-# Please understand that features that were added later to the module
-# are tested later. Here's a very nice test. Should be easier to
-# understand than the others:
-
-$sth_query->dataseek(0);
-$i = 63;
-while (%hash = $sth_query->fetchhash) {
-
-    # fetchhash stuffs the contents of the row directly into a hash
-    # instead of a row. We have only two lines to check. Column she
-    # has to be either 'jazz' or 'x'.
-    if ($hash{she} eq 'jazz' or $hash{she} eq 'x') {
-	print "ok $i\n";
-    } else {
-	print "not ok $i\n";
-    }
-    $i++;
-}
-
+}    
 
 $dbh->query("drop table $firsttable") or test_error;
 
@@ -483,7 +522,7 @@ $query = "create table $firsttable (ascii int, character char(1))";
 $dbh->query($query) or test_error;
 for (1..255) {
     my $chr = $dbh->quote(chr($_));
-    my $query = qq{
+    $query = qq{
 	insert into $firsttable values ($_, $chr)
     };
     $dbh->query($query) or print "not ok 66\n"; # well, could happen more thn once, but ...
@@ -501,3 +540,40 @@ print "ok 67\n";
 
 $dbh->query("drop table $firsttable") or test_error;
 
+# mSQL up to 1.0.16 had this annoying lost table bug, so I try to
+# force our users to upgrade to 1.0.17
+
+{
+    my @created = ();
+    local($Msql::QUIET) = 1;
+
+    # create 8 tables
+    for (1..8) {
+	push @created, create($dbh,$firsttable,q{(foo char(1))});
+    }
+
+    # reference all 8 so they are cached
+    for (@created) {
+	$dbh->listfields($_);
+    }
+
+    # reference a non existant table
+    my $nonexist = "NONEXIST";
+    $nonexist++ while grep /^$nonexist$/, $dbh->listtables;
+    $dbh->listfields($nonexist);
+
+    # reference the first table in the cache: 1.0.16 did not know the contents
+    if ( $dbh->listfields($created[0])->numfields == 0) {
+	my $version = $dbh->getserverinfo;
+	print "not ok 68\n";
+        print STDERR "Your version $version of the msqld has a serious bug,
+\teither upgrade the server to > 1.0.16 or read the file patch.lost.tables\n";
+    } else {
+	print "ok 68\n";
+    }
+
+    # drop the eight tables
+    for (@created) {
+	drop($dbh,$_);
+    }
+}

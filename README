@@ -128,20 +128,36 @@ query piped into your favorite pager program.
 Mailing list
 ------------
 
-Announcements of new versions will be made on comp.lang.perl.announce
-and on the mailing list devoted to the maintenance of the package:
-subscribe to the list by sending mail to
+Please direct your questions to the mailing list devoted to the
+support of the package:
+
+    msqlperl@franz.ww.tu-berlin.de.
+
+Do not send them to me. If you do, I'll eventually forward your mail
+to the mailing list. So please be prepared to have your question
+exposed to hundreds of msqlperl users.
+
+Before you post your questions have a look at the archive of the
+mailing list at
+
+    http://franz.ww.tu-berlin.de/msqlperl
+
+It would be kind if you would subscribe to the mailing list yourself,
+so you can answer the same questions later that you have asked
+yourself before.
+
+Subscribe to the list by sending mail to
 
     msqlperl-request@franz.ww.tu-berlin.de
 
-with the word "subscribe" in the body of the message. It's a low-volume
+with the word "subscribe" in the body of the message.
+
+Announcements of new versions of major importance will usually be made
+on comp.lang.perl.announce. Smaller updates will be announced on the
 mailing list.
 
-You send messages to the list directly when you mail to
-msqlperl@franz.ww.tu-berlin.de.
 
 
-...have fun,
 andreas könig <a.koenig@mind.de>
 
 

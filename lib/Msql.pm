@@ -3,8 +3,8 @@ use vars qw($db_errstr);
 
 require Msql::Statement;
 use vars qw($VERSION $QUIET @ISA @EXPORT);
-$VERSION = "1.10";
-# $Revision: 1.96 $$Date: 1996/07/20 02:40:07 $$RCSfile: Msql.pm,v $
+$VERSION = "1.11";
+# $Revision: 1.97 $$Date: 1996/09/08 13:19:00 $$RCSfile: Msql.pm,v $
 
 $QUIET = 0;
 
@@ -16,26 +16,26 @@ require Exporter;
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
-        CHAR_TYPE
-        INT_TYPE
-        REAL_TYPE
-);
+	     CHAR_TYPE
+	     INT_TYPE
+	     REAL_TYPE
+	    );
 @EXPORT_OK = qw(
-	IDX_TYPE
-        chartype
-        inttype
-        realtype
-	idxtype
-);
+		ANY_TYPE
+		IDENT_TYPE
+		IDX_TYPE
+		LAST_REAL_TYPE
+		NULL_TYPE
+		SYSVAR_TYPE
+		TEXT_TYPE
+	       );
 
-sub CHAR_TYPE { constant("CHAR_TYPE", 0) }
-    *chartype = \&CHAR_TYPE;
-sub INT_TYPE  { constant("INT_TYPE", 0) }
-    *inttype  = \&INT_TYPE;
-sub REAL_TYPE { constant("REAL_TYPE", 0) }
-    *realtype = \&REAL_TYPE;
-sub IDX_TYPE  { constant("IDX_TYPE", 0) }
-    *idxtype  = \&IDX_TYPE;
+sub INT_TYPE   { constant("INT_TYPE", 0) }
+sub CHAR_TYPE  { constant("CHAR_TYPE", 0) }
+sub REAL_TYPE  { constant("REAL_TYPE", 0) }
+sub IDENT_TYPE { constant("IDENT_TYPE", 0) }
+sub IDX_TYPE   { constant("IDX_TYPE", 0) }
+sub TEXT_TYPE  { constant("TEXT_TYPE", 0) }
 sub host     { return shift->{'HOST'} }
 sub sock     { return shift->{'SOCK'} }
 sub database { return shift->{'DATABASE'} }
@@ -50,15 +50,21 @@ sub quote	{
 
 sub AUTOLOAD {
     my $meth = $AUTOLOAD;
-    $meth =~ s/^Msql:://;
+    $meth =~ s/^.*:://;
     $meth =~ s/_//g;
     $meth = lc($meth);
 
-    if (defined &$meth) {
-	*$meth = \&{$meth};
-	return &$meth(@_);
-    }
-    Carp::croak "$AUTOLOAD: Not defined in Msql and not autoloadable";
+    TRY: {
+	  if (defined &$meth) {
+	      *$meth = \&{$meth};
+	      return &$meth(@_);
+	  } elsif ($meth =~ s/(.*)type$/uc($1)."_TYPE"/e) {
+	      # Try to determine the type that was requested by translating inttype to INT_TYPE
+	      # Not that I consider it good style to write inttype, but we once allowed it, so...
+	      redo TRY;
+	  }
+      }
+    Carp::croak "$AUTOLOAD: Not defined in Msql and not autoloadable (last try $meth)";
 }
 
 bootstrap Msql;
@@ -105,7 +111,7 @@ does not use StudlyCaps (see below).
 
 Internally you are dealing with the two classes C<Msql> and
 C<Msql::Statement>. You will never see the latter, because you reach
-it through a statement handle returned by a Query or a ListFields
+it through a statement handle returned by a query or a listfields
 statement. The only class you name explicitly is Msql. It offers you
 the connect command:
 
@@ -133,9 +139,11 @@ selectdb.
   $sth = $dbh->listfields($table);
   $sth = $dbh->query($sql_statement);
 
-These two work rather similar as descibed in the mSQL manual. They return
-a statement handle which lets you further explore what the server has
-to tell you. On error the return value is undef.
+These two work rather similar as descibed in the mSQL manual. They
+return a statement handle which lets you further explore what the
+server has to tell you. On error the return value is undef. The object
+returned by listfields will not know about the size of the table, so a
+numrows() on it will return the string "N/A";
 
   @arr = $dbh->listdbs();
   @arr = $dbh->listtables;

@@ -124,6 +124,14 @@ int arg;
 {
     errno = 0;
     switch (*name) {
+    case 'A':
+	if (strEQ(name, "ANY_TYPE"))
+#ifdef ANY_TYPE
+	    return ANY_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
     case 'C':
 	if (strEQ(name, "CHAR_TYPE"))
 #ifdef CHAR_TYPE
@@ -148,6 +156,14 @@ int arg;
 	if (strEQ(name, "INT_TYPE"))
 #ifdef INT_TYPE
 	    return INT_TYPE;
+#else
+	    goto not_there;
+#endif
+	break;
+    case 'L':
+	if (strEQ(name, "LAST_REAL_TYPE"))
+#ifdef LAST_REAL_TYPE
+	    return LAST_REAL_TYPE;
 #else
 	    goto not_there;
 #endif
@@ -190,10 +206,10 @@ int arg;
 	    goto not_there;
 #endif
 	break;
-    case 'V':
-	if (strEQ(name, "VARCHAR_TYPE"))
-#ifdef VARCHAR_TYPE
-	    return VARCHAR_TYPE;
+    case 'T':
+	if (strEQ(name, "TEXT_TYPE"))
+#ifdef TEXT_TYPE
+	    return TEXT_TYPE;
 #else
 	    goto not_there;
 #endif
@@ -584,7 +600,11 @@ msqlquery(handle, query)
       ST(0) = sv_2mortal(sv_bless(rv, stash));
     } else {
       ST(0) = sv_newmortal();
-      sv_setnv( ST(0), 1);
+      if (tmp > 0){
+	sv_setnv( ST(0), tmp);
+      } else {
+	sv_setpv( ST(0), "0e0");
+      }
     }
   }
 }
@@ -664,11 +684,41 @@ msqllistfields(handle, table)
   } else {
     hv = (HV*)sv_2mortal((SV*)newHV());
     hv_store(hv,"RESULT",6,(SV *)newSViv((IV)result),0);
+    hv_store(hv,"NUMROWS",7,(SV *)newSVpv("N/A",3),0);
     rv = newRV((SV*)hv);
     stash = gv_stashpv(package, TRUE);
     ST(0) = sv_2mortal(sv_bless(rv, stash));
   }
 }
+
+void
+msqllistindex(handle, table, index)
+   Msql			handle
+   char *		table
+   char *		index
+   PROTOTYPE: $$$
+   CODE:
+#ifdef IDX_TYPE
+{
+  dQUERY;
+
+  if (svp = hv_fetch(handle,"SOCK",4,FALSE))
+    sock = SvIV(*svp);
+  if (sock && table)
+    result = msqlListIndex(sock,table,index);
+  if (result == NULL ) {
+    ERRMSG;
+  } else {
+    hv = (HV*)sv_2mortal((SV*)newHV());
+    hv_store(hv,"RESULT",6,(SV *)newSViv((IV)result),0);
+    rv = newRV((SV*)hv);
+    stash = gv_stashpv(package, TRUE);
+    ST(0) = sv_2mortal(sv_bless(rv, stash));
+  }
+}
+#else
+    not_here("listfields");
+#endif
 
 void
 msqlDESTROY(handle)

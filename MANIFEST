@@ -6,6 +6,8 @@ Msql.xs				XS file (see man perlapi)
 README				Please read
 lib/Msql.pm			Perl Module
 lib/Msql/Statement.pm		Perl Module
+patch.lost.tables		Fix after release of msql-1.0.16
 pmsql.PL                        msql and relshow in one interactive program
 t/msql.t			Test script, also a valuable tutorial for the clueless
+t/msql2.t			Test script for msql2 only
 typemap				Typemap file (see man perlapi)

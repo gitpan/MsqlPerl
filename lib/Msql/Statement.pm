@@ -1,11 +1,14 @@
 package Msql::Statement;
 
-use vars qw($Optimize_Table $VERSION);
+use strict;
+use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = substr q$Revision: 1.13 $, 10;
-# $Id: Statement.pm,v 1.13 1996/07/11 21:05:30 k Exp $
+$VERSION = substr q$Revision: 1.15 $, 10;
+# $Id: Statement.pm,v 1.15 1996/09/08 13:33:45 k Exp $
 
-sub numrows    { shift->fetchinternal( 'NUMROWS'   ) }
+$OPTIMIZE = 0; # controls, which optimization we default to
+
+sub numrows    { my $x = shift; $x->{'NUMROWS'} or $x->fetchinternal( 'NUMROWS'   ) }
 sub numfields  { shift->fetchinternal( 'NUMFIELDS' ) }
 sub table      { return wantarray ? @{shift->fetchinternal('TABLE'    )}: shift->fetchinternal('TABLE'    )}
 sub name       { return wantarray ? @{shift->fetchinternal('NAME'     )}: shift->fetchinternal('NAME'     )}
@@ -14,14 +17,25 @@ sub isnotnull  { return wantarray ? @{shift->fetchinternal('ISNOTNULL')}: shift-
 sub isprikey   { return wantarray ? @{shift->fetchinternal('ISPRIKEY' )}: shift->fetchinternal('ISPRIKEY' )}
 sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift->fetchinternal('LENGTH'   )}
 
+sub listindices {
+    my($sth) = shift;
+    my(@result,$i);
+    return () unless &Msql::IDX_TYPE;
+    foreach $i (0..$sth->numfields-1) {
+	next unless $sth->type->[$i] == &Msql::IDX_TYPE;
+	push @result, $sth->name->[$i];
+    }
+    @result;
+}
 
 sub AUTOLOAD {
     my $meth = $AUTOLOAD;
-    $meth =~ s/^Msql::Statement:://;
+    $meth =~ s/^.*:://;
     $meth =~ s/_//g;
     $meth = lc($meth);
 
     # Allow them to say fetch_row or FetchRow
+    no strict;
     if (defined &$meth) {
 	*$AUTOLOAD = \&{$meth};
 	return &$AUTOLOAD(@_);
@@ -36,25 +50,41 @@ sub unctrl {
     $x;
 }
 
+sub optimize {
+    my($self,$arg) = @_;
+    if (defined $arg) {
+	return $self->{'OPTIMIZE'} = $arg;
+    } else {
+	return $self->{'OPTIMIZE'} ||= $OPTIMIZE;
+    }
+}
+
 sub as_string {
     my($sth) = @_;
     my($plusline,$titline,$sprintf,$result,$s) = ('+','|','|');
-    if ($Optimize_Table) {
+    if ($sth->optimize) {
 	my(@sprintf,$l);
 	for (0..$sth->numfields-1) {
 	    $sprintf[$_] = length($sth->name->[$_]);
 	}
-	$sth->DataSeek(0);
+	$sth->dataseek(0);
 	my(@row);
-	while (@row = map {defined $_ ? unctrl($_) : "NULL"} $sth->FetchRow) {
+	while (@row = $sth->fetchrow) { #map {defined $_ ? unctrl($_) : "NULL"}!
 	    foreach (0..$#row) {
-		$sprintf[$_] = length($row[$_]) if length($row[$_]) > $sprintf[$_];
+		my($s) = defined $row[$_] ? unctrl($row[$_]) : "NULL";
+		# New in 2.0: a string is longer than it should be
+		if ($sth->type->[$_] == &Msql::TEXT_TYPE && length($s) > $sth->length->[$_] + 5) {
+		    my $l = length($row[$_]);
+		    $sprintf[$_] = $sth->length->[$_] + 5 + length($l); # for "...()"
+		} else {
+		    $sprintf[$_] = length($s) if length($s) > $sprintf[$_];
+		}
 	    }
 	}
 	for (0..$sth->numfields-1) {
 	    $l = $sprintf[$_];
 	    $l *= -1 if 
-		$sth->type->[$_] == Msql::CHAR_TYPE();
+		$sth->type->[$_] & &Msql::CHAR_TYPE | &Msql::TEXT_TYPE;
 	    $plusline .= sprintf "%$ {l}s+", "-" x $sprintf[$_];
 	    $titline .= sprintf "%$ {l}s|", $sth->name->[$_];
 	    $sprintf .= "%$ {l}s|";
@@ -72,7 +102,8 @@ sub as_string {
 	    $l < length($sth->name->[$_]) and $l = length($sth->name->[$_]);
 	    $plusline .= "-" x $l . "+";
 	    $titline .= $sth->name->[$_] . " " x ($l - length($sth->name->[$_])) . "|";
-	    $sprintf .= $sth->type->[$_] == Msql::CHAR_TYPE() ? "%-$ {l}s|" : "%$ {l}s|";
+	    $sprintf .= (($sth->type->[$_] & &Msql::CHAR_TYPE | &Msql::TEXT_TYPE)
+		? "%-$ {l}s|" : "%$ {l}s|");
 	}
     }
     $sprintf .= "\n";
@@ -80,8 +111,21 @@ sub as_string {
     $result = "$plusline\n$titline\n$plusline\n";
     $sth->dataseek(0);
     my(@row);
-    while (@row = map {defined $_ ? unctrl($_) : "NULL"} $sth->fetchrow) {
-	$result .= sprintf $sprintf, @row;
+    while (@row = $sth->fetchrow) { #was: map {defined $_ ? unctrl($_) : "NULL"} 
+	my(@prow);
+	foreach (0..$#row) {
+	    $prow[$_] = defined $row[$_] ? unctrl($row[$_]) : "NULL";
+	    # New in 2.0: a string is longer than it should be
+	    if (
+		$sth->optimize &&
+		$sth->type->[$_] == &Msql::TEXT_TYPE &&
+		length($prow[$_]) > $sth->length->[$_] + 5
+	       ) {
+		my $l = length($row[$_]);
+		substr($prow[$_],$sth->length->[$_])="...($l)";
+	    }
+	}
+	$result .= sprintf $sprintf, @prow;
     }
     $result .= "$plusline\n";
     $s = $sth->numrows == 1 ? "" : "s";

@@ -20,8 +20,8 @@ $Config{'startperl'}
 !GROK!THIS!
 print OUT <<'!NO!SUBS!';
 
-# $Id: pmsql.PL,v 1.25 1996/07/11 21:05:30 k Exp $
-my $version = substr q$Revision: 1.25 $, 10;
+# $Id: pmsql.PL,v 1.31 1996/09/08 13:39:02 k Exp $
+my $version = substr q$Revision: 1.31 $, 10;
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -45,7 +45,21 @@ $^W = 1;
 # typelabels
 
 my(@typelabel);
-@typelabel[Msql::chartype(),Msql::inttype(),Msql::realtype(),Msql::idxtype()] = qw(char int real index);
+@typelabel[
+	   Msql::INT_TYPE(),
+	   Msql::CHAR_TYPE(),
+	   Msql::REAL_TYPE(),
+	   Msql::IDENT_TYPE(),
+	   Msql::IDX_TYPE(),
+	   Msql::TEXT_TYPE()
+	  ] = qw(
+		 int
+		 char 
+		 real
+		 ident
+		 index
+		 text
+		);
 
 # host
 
@@ -60,13 +74,18 @@ if (@ARGV && $ARGV[0] eq "-h") {
 my $Less;
 {
     my @path = split ":", $ENV{PATH};
-    $Less = $ENV{PMSQL_PAGER} || $ENV{PAGER} || find_exe("less",[@path]) || 
+    $Less = $ENV{PMSQL_PAGER} || $ENV{PAGER} || find_exe("less",[@path]) ||
                 find_exe("more",[@path]) || "";
 }
 
 # database
 
 my $database = $ARGV[0];
+$database ||= "";
+
+#
+# Greetings
+#
 
 {
     my $rl_avail = defined &Term::ReadLine::Perl::readline ? "enabled" : "available (get Term::ReadKey and Term::ReadLine::Perl)";
@@ -79,14 +98,28 @@ Readline support $rl_avail
 }
 
 #
-# Formatting of the tables
+# Debugging
 #
 
-$Msql::Statement::Optimize_Table=1;
+my %Debug;
+#table          1
+#complete       2
+#table_or_field 4
+my $Debug = 0; # 1 | 2 | 4;
 
 
+#
+# Shell
+#
 
 while ( defined ($_ = $term->readline($prompt)) ) {
+
+    #
+    # Leading blanks? No
+    #
+
+    s/^\s+//;
+    next if /^$/;
 
     #
     # Let them eval a piece of perl
@@ -105,15 +138,18 @@ while ( defined ($_ = $term->readline($prompt)) ) {
     #
 
     } elsif (/^\?/) {
+	my($indexarg) = &Msql::IDX_TYPE ? " [index]" : "";
+	my($indexdes) = &Msql::IDX_TYPE ? ", tables or indices" : " or tables";
 	print qq{
-ho[st] <host>                            Set default host (current is "$host")
-da[tabase] <database>                    Set default database (current is "$database")
-re[lshow] [-h host] [database] [table]   describe databases or tables and
-                                                  set default host and database
-! <anything>                             eval string in perl
-?                                        print this message
-q[uit]                                   leave pmsql
-<anything else>                          query default database on default host
+ho[st] <host>                        Set default host (current is "$host")
+da[tabase] <database>                Set default database (current is "$database")
+re[lshow] [-h host] [database] [table]$indexarg
+                                     describe databases$indexdes
+                                           and set default host and database
+! <anything>                         eval string in perl
+?                                    print this message
+q[uit]                               leave pmsql
+<anything else>                      query default database on default host
 
 };
 	next;
@@ -123,7 +159,8 @@ q[uit]                                   leave pmsql
     # Look closer what they said
     #
 
-    my($command,@arg) = /^\s*(\S+)\s*(\S*)\s*(\S*)/;
+    my($command,$arg) = /^(\S+)(.*)/;
+    my(@arg) = split " ", $arg;
     next unless defined $command;
 
     if ($command =~ /^ho(s(t)?)?$/i) {
@@ -162,6 +199,7 @@ q[uit]                                   leave pmsql
 	$::Q = $Db->query($_) or next;
 	print "Query ok\n";
 	if (ref $::Q) {
+	    $::Q->optimize(1);
 	    if ($Less) {
 		open OUT, "| $Less";
 	    } else {
@@ -175,23 +213,27 @@ q[uit]                                   leave pmsql
 
 exit;
 
+#
+# Subroutines
+#
+
 sub complete {
     my($word,$line,$pos) = @_;
     $word ||= "";
     $line ||= "";
     $pos ||= 0;
-    #print STDERR join " ** ", ("|",$word,$line,$pos,"|");
+    print STDERR "complete line[$line] pos[$pos]" if $Debug & 2;
     $line =~ s/^\s*//;
     return
-	$pos == 0 ? grep /^$word/i, ('!','?','create table','database','delete from','drop table','host','insert into','quit','relshow','select','update') :
-	$line =~ /^[\!\?qch]/i ? () :
-	$line =~ /^da/i ? complete_database($word) :
-	$line =~ /^de/i ? complete_table_or_field($word,$line) :
-	$line =~ /^dr/i ? complete_table($word,$line) :
-	$line =~ /^in/i ? complete_table_or_field($word,$line) :
-	$line =~ /^re/i ? complete_table_or_field($word,$line) :
-	$line =~ /^se/i ? complete_table_or_field($word,$line) :
-	$line =~ /^up/i ? complete_table_or_field($word,$line) : ();
+	$pos == 0 ? grep /^$word/i, ('!','?','create','database','delete from','drop table','host','insert into','quit','relshow','select','update') :
+	$line =~ /^[\!\?qch]/i ? () :                                  # quit, create, host
+	$line =~ /^da/i ? complete_database($word) :		       # database
+	$line =~ /^de/i ? complete_table_or_field($word,$line) :       # delete
+	$line =~ /^dr/i ? complete_table($word,$line) :		       # drop
+	$line =~ /^in/i ? complete_table_or_field($word,$line) :       # insert
+	$line =~ /^re/i ? complete_for_relshow($word,$line) :          # relshow
+	$line =~ /^se/i ? complete_table_or_field($word,$line) :       # select
+	$line =~ /^up/i ? complete_table_or_field($word,$line) : ();   # update
 }
 
 sub complete_database {
@@ -199,10 +241,26 @@ sub complete_database {
     grep /^\Q$word/, Msql->connect($host)->listdbs;
 }
 
+sub complete_for_relshow {
+    my($word,$line) = @_;
+    my @t = split " ", $line;
+#    system '/usr/sbin/sfplay', '/usr/adm/alarmsnd/woodblock.aiff';
+#    @::Gl = ([@t]);
+    if (@t==4 && $word eq $t[3] || @t==3 && $word eq "") {
+	my $sth = Msql->connect($host, $t[1])->listfields($t[2]);
+	my(@idx) = $sth->listindices;
+	my(@fitidx) = grep /^\Q$word/, @idx;
+#	push @::Gl, $sth, [@idx], [@fitidx]; # for debugging only
+	return @fitidx;
+    } else {
+	complete_table_or_field($word,$line);
+    }
+}
+
 sub complete_table {
     my($word,$line) = @_;
     my($db) = $line =~ /^r\w+\s+(\w+)/;
-    #print STDERR "line [$line] db [$db]";
+    print STDERR "word[$word] line[$line] db[$db]" if $Debug & 1;
     $db ||= $database;
     return () unless $db;
     grep /^\Q$word/, Msql->connect($host, $db)->listtables;
@@ -210,12 +268,13 @@ sub complete_table {
 
 sub complete_table_or_field {
     my($word,$line) = @_;
+    print STDERR "word[$word] line[$line]" if $Debug & 4;
     return complete_database($word) if $line =~ /^r\w+\s+\Q$word\E$/;
-    return complete_table($word,$line) if 
-	$line =~ /^[ds].*\sfrom\s+\Q$word\E$/ ||	# delete, select
-	$line =~ /^u\w+\s+\Q$word\E$/ || # update
-	$line =~ /^r\w+\s+\w+\s+\Q$word\E$/ || # relshow
-	$line =~ /^i.*\sinto\s+\Q$word\E$/ # insert
+    return complete_table($word,$line) if
+	$line =~ /^[ds].*\sfrom\s+\Q$word\E/ ||	# delete, select
+	$line =~ /^u\w+\s+\Q$word\E/ || # update
+	$line =~ /^r\w+\s+\w+\s+\Q$word\E/ || # relshow
+	$line =~ /^i.*\sinto\s+\Q$word\E/ # insert
 	    ;
     return () unless $database;
     my ($table) = $1 if
@@ -227,7 +286,8 @@ sub complete_table_or_field {
     my(@table) = $table ? ($table) : Msql->connect($host, $database)->listtables;
     my($db,%fields,@fields) = Msql->connect($host, $database);
     for $table (@table) {
-	@fields = $db->listfields($table)->name;
+	my $st = $db->listfields($table) or next;
+	@fields = $st->name;
 	@fields{@fields} = (1) x @fields;
     }
     return sort grep /^\Q$word/, keys %fields;
@@ -259,7 +319,11 @@ sub relshow {
     }
 
     if (@_ > 2){
-	return "Usage: relshow [-h host] [database] [table]\n";
+	if (&Msql::IDX_TYPE) {
+	    return "Usage: relshow [-h host] [database] [table] [index]\n" if @_ > 3;
+	} else {
+	    return "Usage: relshow [-h host] [database] [table]\n";
+	}
     }
 
     my @m;
@@ -274,26 +338,55 @@ sub relshow {
 	return "Couldn't connect to $database\n" unless $Dbh->selectdb($database);
 	push @m, "\nDatabase = $database\n";
 	if ($table = shift @_) {
+	    grep /^\Q$table\E$/, $Dbh->ListTables or return join "", @m, qq{Table "$table" not found\n};
+	    my $sth = $Dbh->listfields($table) or return join "", @m, qq{Error reading listfields($table)\n};
+	    push @m, qq{Table = $table\n};
+
+	    my $index;
+	    if ($index = shift @_) {
+
+		#
+		# relshow database table index
+		#
+
+		return "Too many arguments to relshow\n" unless Msql->getserverinfo ge 2;
+		#warn join ":", grep //, $sth->name;
+		grep(/^\Q$index\E$/, $sth->name) or return join "", @m, qq{Index "$index" not found\n};
+		push @m, qq{Index = $index\n};
+		my $border = " +" . ("-"x21) . "+\n";
+		push @m, $border;
+		push @m, sprintf " | %-19s |\n", "      Field";
+		push @m, $border;
+		my $idxhandle = $Dbh->listindex($table,$index) or return join "", @m, qq{Error reading listindex($table,$index)\n};
+		my @row;
+		while (@row = $idxhandle->fetchrow) {
+		    push @m, sprintf " | %-19s |\n", $row[0];
+		}
+		push @m, $border;
+		return join "", @m;
+	    }
+
 	    #
 	    # relshow database table
 	    #
 
-	    grep /^\Q$table\E$/, $Dbh->ListTables or return join "", @m, qq{Table "$table" not found\n};
-	    my $sth = $Dbh->listfields($table) or return join "", @m, qq{Error reading listfields($table)\n};
 	    my $fieldwidth = longest($sth->name,"Field") || 15;
-	    my $border = " +-".("-"x$fieldwidth)."-+------+--------+----------+-----+\n";
-	    push @m, qq{Table = $table\n};
+	    my $keywidth = Msql->getserverinfo lt 2 ? 3 : 12;
+	    my $keytitle = Msql->getserverinfo lt 2 ? "Key" : "Unique Index";
+	    my $border = " +-".("-"x$fieldwidth)."-+-------+--------+----------+-".("-"x$keywidth)."-+\n";
 	    push @m, $border;
-	    push @m, sprintf " | %-".$fieldwidth."s | Type | Length | Not Null | Key |\n", "Field";
+	    push @m, sprintf " | %-".$fieldwidth."s | Type  | Length | Not Null | %-".$keywidth."s |\n", "Field", $keytitle;
 	    push @m, $border;
 	    my $max = $sth->numfields;
 	    for ($i=0;$i<$max;$i++){
-		push @m, sprintf " | %-".$fieldwidth."s | %-4s | %6s |     %-2s   |  %-2s |\n",
+		my $keyNO = Msql->getserverinfo lt 2 ? "N" :
+		    $sth->type->[$i]==Msql::IDX_TYPE() ? "N" : "N/A";
+		push @m, sprintf " | %-".$fieldwidth."s | %-5s | %6s |    %-3s   | %-".$keywidth."s |\n",
 			$sth->name->[$i],
 			$typelabel[$sth->type->[$i]] || ("unknown-".$sth->type->[$i]),
-			$sth->length->[$i],
-			$sth->is_not_null->[$i] ? "Y" : "N",
-			$sth->is_pri_key->[$i] ? "Y" : "N";
+			($sth->length->[$i] || "N/A"),
+			$sth->is_not_null->[$i] ? " Y " : $sth->type->[$i]!=Msql::IDX_TYPE() ? " N " : "N/A",
+			$sth->is_pri_key->[$i] ? "Y" : $keyNO;
 	    }
 	    push @m, "$border\n";
 	} else {
