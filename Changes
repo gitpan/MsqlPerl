@@ -1,3 +1,15 @@
+=head1 May 26, 1997
+
+Improved FAQ:
+
+    longer answer on msql-1 vs msql-2,
+
+    answer to the question "What am I doing wrong, I get: Can't call
+    method ... without a package or object reference"
+
+    Added a recent posting by Doug Wilson <doug@hurl.net> about the
+    icc method (Thanks, Doug!)
+
 =head1 April 26, 1997
 
 Improved a test for mSQL-2 to print better diagnostics.

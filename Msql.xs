@@ -771,7 +771,7 @@ msqlquery(handle, query)
     } else {
       ST(0) = sv_newmortal();
       if (tmp > 0){
-	sv_setnv( ST(0), tmp);
+	sv_setiv( ST(0), tmp);
       } else {
 	sv_setpv( ST(0), "0e0");
       }
