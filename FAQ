@@ -24,3 +24,10 @@ Subject: HPUX -- no chance?
         > It's necessary to compile the library with cc with +z flag
         > option.
 
+Subject: Where can I find more documentation?
+
+	Msql.pm IS the manpage in pod format. Get perl5.001m or better
+	and after 'make install' you can try 'perldoc Msql' and read
+	the manpage. Also, the test script, t/msql.t might help you to
+	sort things out.
+

@@ -52,27 +52,23 @@ typedef HV *Msql;
       warn("MSQL's message: %s", msqlErrMsg);	\
     XSRETURN_UNDEF;
 
-/*
-former coding:
-    ST(0) = &sv_undef
-*/
 
 #define readSOCKET				\
   if (svp = hv_fetch(handle,"SOCK",4,FALSE)){	\
     sock = SvIV(*svp);				\
     svsock = (SV*)newSVsv(*svp);		\
   } else {					\
-    croak("Could not read svp");		\
+    svsock = &sv_undef;		\
   }						\
   if (svp = hv_fetch(handle,"DATABASE",8,FALSE)){	\
     svdb = (SV*)newSVsv(*svp);	\
   } else {					\
-    croak("Could not read svp");		\
+    svdb = &sv_undef;		\
   }						\
   if (svp = hv_fetch(handle,"HOST",4,FALSE)){	\
     svhost = (SV*)newSVsv(*svp);	\
   } else {					\
-    croak("Could not read svp");		\
+    svhost = &sv_undef;		\
   }
 
 #define readRESULT				\
@@ -80,7 +76,7 @@ former coding:
     sv = *svp;					\
     result = (Msql__Result)SvIV(sv);		\
   } else {					\
-    croak("couldn't read svp");			\
+    sv =  &sv_undef;		\
   }
 
 #define retMSQLSOCK				\

@@ -51,7 +51,13 @@ Documentation
 
 Documentation is available in pod format within the file Msql.pm. You
 can turn this file into a manpage or a html page with the pod2*
-programs that come with the perl distribution.
+programs that come with the perl distribution. perl5.001m and better
+supplies a "perldoc" program, so you can say now "perldoc Msql". Later
+perls will probably have support for you to say "man Msql".
+
+The tutorial that may be helpful for you is in the file t/msql.t. This
+file IS the test program for this package and illustrates nearly all
+basic operations that are available.
 
 Mailing list
 ------------
@@ -62,8 +68,11 @@ subscribe to the list by sending mail to
 
     msqlperl-request@franz.ww.tu-berlin.de
 
-with the word "subscribe" in the message field. It's a low-volume
+with the word "subscribe" in the body of the message. It's a low-volume
 mailing list.
+
+You send messages to the list directly when you mail to
+msqlperl@franz.ww.tu-berlin.de.
 
 
 ...have fun,

@@ -7,5 +7,5 @@ lib/Msql.pm			Perl Module
 lib/Msql/Statement.pm		Perl Module
 Msql.xs				XS file (see man perlapi)
 README				Please read
-t/msql.t			Test script
+t/msql.t			Test script, also a valuable tutorial for the clueless
 typemap				Typemap file (see man perlapi)

@@ -1,3 +1,8 @@
+October 1, 1995
+   Fixed a serious bug. Since we do not store $db->{SOCK} and family
+   anymore, it's legal that the hash-entry doesn't exist. 1.02
+   returned the not very helpful message "Couldn't read svp".
+
 July 30, 1995
     Fixed a few documentation bugs. Reintroduced -lmisc in Makefile.PL.
     Introduced $Msql::QUIET, a variable to suppress error messages from

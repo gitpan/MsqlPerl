@@ -2,8 +2,8 @@ package Msql;
 
 require Msql::Statement;
 
-$VERSION = $VERSION = "1.02";
-# $Revision: 1.87 $$Date: 1995/08/20 10:52:39 $$RCSfile: Msql.pm,v $
+$VERSION = $VERSION = "1.03";
+# $Revision: 1.88 $$Date: 1995/10/01 13:22:52 $$RCSfile: Msql.pm,v $
 
 $QUIET = $QUIET = 0;
 
